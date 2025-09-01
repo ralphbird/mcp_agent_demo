@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from currency_app.database import create_tables
-from currency_app.routers import conversion, health
+from currency_app.routers import conversion, health, rates
 
 
 @asynccontextmanager
@@ -28,10 +28,11 @@ app = FastAPI(
 # Include routers
 app.include_router(health.router)
 app.include_router(conversion.router)
+app.include_router(rates.router)
 
 
 @app.get("/")
-async def root() -> dict[str, str]:
+async def root() -> dict[str, str | dict[str, str]]:
     """Root endpoint with basic API information.
 
     Returns:
@@ -42,6 +43,10 @@ async def root() -> dict[str, str]:
         "version": "0.1.0",
         "docs": "/docs",
         "health": "/health",
+        "endpoints": {
+            "convert": "/api/v1/convert",
+            "rates": "/api/v1/rates",
+        },
     }
 
 

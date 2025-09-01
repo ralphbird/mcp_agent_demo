@@ -77,6 +77,9 @@ class TestRootEndpoint:
         assert data["version"] == "0.1.0"
         assert data["docs"] == "/docs"
         assert data["health"] == "/health"
+        assert "endpoints" in data
+        assert data["endpoints"]["convert"] == "/api/v1/convert"
+        assert data["endpoints"]["rates"] == "/api/v1/rates"
 
 
 class TestConversionEndpoint:
@@ -191,3 +194,84 @@ class TestConversionEndpoint:
         response = client.post("/api/v1/convert", json=request_data)
 
         assert response.status_code == 422  # Validation error
+
+
+class TestRatesEndpoint:
+    """Test exchange rates endpoints."""
+
+    def test_get_current_rates_success(self, client):
+        """Test successful retrieval of current exchange rates."""
+        response = client.get("/api/v1/rates")
+
+        assert response.status_code == 200
+        data = response.json()
+
+        # Check response structure
+        assert "base_currency" in data
+        assert data["base_currency"] == "USD"
+        assert "rates" in data
+        assert "timestamp" in data
+        assert "metadata" in data
+
+        # Check metadata
+        metadata = data["metadata"]
+        assert metadata["rate_source"] == "simulated"
+        assert metadata["total_currencies"] == "10"
+
+        # Check rates structure and content
+        rates = data["rates"]
+        assert len(rates) == 10  # Should have 10 supported currencies
+
+        # Verify each rate has required fields
+        for rate in rates:
+            assert "currency" in rate
+            assert "rate" in rate
+            assert "last_updated" in rate
+
+        # Check specific currencies are present
+        currencies = {rate["currency"] for rate in rates}
+        expected_currencies = {"USD", "EUR", "GBP", "JPY", "AUD", "CAD", "CHF", "CNY", "SEK", "NZD"}
+        assert currencies == expected_currencies
+
+        # Verify USD rate is 1.0000 (base currency)
+        usd_rate = next(rate for rate in rates if rate["currency"] == "USD")
+        assert float(usd_rate["rate"]) == 1.0000
+
+        # Verify some known exchange rates
+        eur_rate = next(rate for rate in rates if rate["currency"] == "EUR")
+        assert float(eur_rate["rate"]) == 0.8523
+
+        gbp_rate = next(rate for rate in rates if rate["currency"] == "GBP")
+        assert float(gbp_rate["rate"]) == 0.7891
+
+    def test_get_current_rates_structure(self, client):
+        """Test the structure and types of the rates response."""
+        response = client.get("/api/v1/rates")
+
+        assert response.status_code == 200
+        data = response.json()
+
+        # Verify top-level structure
+        assert isinstance(data["base_currency"], str)
+        assert isinstance(data["rates"], list)
+        assert isinstance(data["timestamp"], str)
+        assert isinstance(data["metadata"], dict)
+
+        # Verify rate entries structure
+        for rate in data["rates"]:
+            assert isinstance(rate["currency"], str)
+            assert len(rate["currency"]) == 3  # Should be 3-letter currency code
+            assert isinstance(
+                rate["rate"], int | float | str
+            )  # Decimal serialized as string/number
+            assert isinstance(rate["last_updated"], str)  # ISO datetime string
+
+    def test_get_current_rates_sorted(self, client):
+        """Test that rates are returned in sorted order by currency code."""
+        response = client.get("/api/v1/rates")
+
+        assert response.status_code == 200
+        data = response.json()
+
+        currencies = [rate["currency"] for rate in data["rates"]]
+        assert currencies == sorted(currencies)  # Should be alphabetically sorted

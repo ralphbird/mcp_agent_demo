@@ -27,10 +27,10 @@ async def convert_currency(
     Raises:
         HTTPException: If currency is invalid or conversion fails
     """
-    try:
-        # Initialize currency service
-        currency_service = CurrencyService()
+    # Initialize currency service
+    currency_service = CurrencyService()
 
+    try:
         # Perform conversion
         response = currency_service.convert_currency(request)
 
@@ -56,7 +56,9 @@ async def convert_currency(
         error_response = ErrorResponse.create(
             code="INVALID_CURRENCY",
             message=str(e),
-            details={"supported_currencies": currency_service.get_supported_currencies()},
+            details={
+                "supported_currencies": ", ".join(currency_service.get_supported_currencies())
+            },
             request_id=request.request_id,
         )
         raise HTTPException(status_code=400, detail=error_response.error)

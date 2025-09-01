@@ -43,10 +43,12 @@ async def detailed_health_check(db: Session = Depends(get_db)) -> dict[str, str 
 
     # Test database connectivity
     try:
-        db.execute("SELECT 1")
+        from sqlalchemy import text
+
+        db.execute(text("SELECT 1"))
         health_status["checks"]["database"] = "healthy"
     except Exception as e:
         health_status["status"] = "unhealthy"
-        health_status["checks"]["database"] = f"unhealthy: {str(e)}"
+        health_status["checks"]["database"] = f"unhealthy: {e!s}"
 
     return health_status

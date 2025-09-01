@@ -1,11 +1,12 @@
 # Currency Conversion Demo
 
-A comprehensive FastAPI-based currency conversion application designed to demonstrate advanced debugging techniques, monitoring, and observability practices in a realistic microservice environment.
+A comprehensive FastAPI-based currency conversion application designed to demonstrate advanced
+debugging techniques, monitoring, and observability practices in a realistic microservice environment.
 
 ## 🎯 Project Status
 
-**Phase 1: ✅ COMPLETE** - Core API Foundation  
-**Phase 2: 🚧 Planned** - Extended API & Dashboard  
+**Phase 1: ✅ COMPLETE** - Core API Foundation
+**Phase 2: 🚧 Planned** - Extended API & Dashboard
 **Phase 3: 📋 Planned** - Full Observability & Advanced Features
 
 ## 🚀 Features (Phase 1)
@@ -21,7 +22,7 @@ A comprehensive FastAPI-based currency conversion application designed to demons
 ### Supported Currencies
 
 - USD (US Dollar), EUR (Euro), GBP (British Pound)
-- JPY (Japanese Yen), AUD (Australian Dollar), CAD (Canadian Dollar)  
+- JPY (Japanese Yen), AUD (Australian Dollar), CAD (Canadian Dollar)
 - CHF (Swiss Franc), CNY (Chinese Yuan), SEK (Swedish Krona), NZD (New Zealand Dollar)
 
 ### Development Tools
@@ -55,7 +56,7 @@ make dev
 The API will be available at:
 
 - **Server**: <http://localhost:8000>
-- **Documentation**: <http://localhost:8000/docs>  
+- **Documentation**: <http://localhost:8000/docs>
 - **Health Check**: <http://localhost:8000/health>
 
 ### Quick Test
@@ -90,7 +91,7 @@ curl -X POST "http://localhost:8000/api/v1/convert" \
 POST /api/v1/convert
 {
   "amount": 100.00,
-  "from_currency": "USD", 
+  "from_currency": "USD",
   "to_currency": "EUR"
 }
 
@@ -113,7 +114,7 @@ Response:
 
 ```bash
 make help          # Show all available commands
-make install       # Install dependencies  
+make install       # Install dependencies
 make dev           # Run development server with auto-reload
 make test          # Run all tests with verbose output
 make test-quick    # Run tests with minimal output
@@ -148,7 +149,7 @@ mcp_agent_demo/
 ├── api/                          # Phase 1: Core API service
 │   ├── currency_app/            # Main application code
 │   │   ├── models/              # Pydantic & SQLAlchemy models
-│   │   ├── routers/             # FastAPI route handlers  
+│   │   ├── routers/             # FastAPI route handlers
 │   │   ├── services/            # Business logic
 │   │   ├── database.py          # Database configuration
 │   │   └── main.py              # FastAPI application
@@ -197,7 +198,7 @@ poetry run pytest tests/test_api.py              # Integration tests
 **Phase 1 Architecture:**
 
 - **FastAPI**: Modern async web framework
-- **SQLAlchemy**: Database ORM with SQLite backend  
+- **SQLAlchemy**: Database ORM with SQLite backend
 - **Pydantic**: Data validation and serialization
 - **Poetry**: Dependency management and packaging
 - **Ruff + Pyright**: Code quality and type safety
@@ -205,7 +206,7 @@ poetry run pytest tests/test_api.py              # Integration tests
 **Key Design Decisions:**
 
 - **Simulated Rates**: Static exchange rates for consistent testing
-- **Decimal Precision**: Financial-grade decimal handling  
+- **Decimal Precision**: Financial-grade decimal handling
 - **Banker's Rounding**: Industry-standard rounding for currency
 - **Request Tracking**: Complete audit trail with UUIDs
 - **Structured Errors**: Consistent error response format
@@ -215,7 +216,7 @@ poetry run pytest tests/test_api.py              # Integration tests
 This is a demo project showcasing incremental development practices. The codebase follows:
 
 - **Code Quality**: Ruff formatting + linting, Pyright type checking
-- **Testing**: >80% coverage target with comprehensive test scenarios  
+- **Testing**: >80% coverage target with comprehensive test scenarios
 - **Documentation**: Inline docstrings + architectural documentation
 - **Git Workflow**: Descriptive commits with proper attribution
 

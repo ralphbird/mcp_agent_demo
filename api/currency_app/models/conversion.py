@@ -13,7 +13,9 @@ class ConversionRequest(BaseModel):
     amount: Decimal = Field(..., gt=0, description="Amount to convert")
     from_currency: str = Field(..., min_length=3, max_length=3, description="Source currency code")
     to_currency: str = Field(..., min_length=3, max_length=3, description="Target currency code")
-    request_id: UUID | None = Field(default_factory=uuid4, description="Optional request ID")
+    request_id: UUID = Field(
+        default_factory=uuid4, description="Request ID (auto-generated if not provided)"
+    )
 
     @field_validator("from_currency", "to_currency")
     @classmethod
@@ -72,3 +74,29 @@ class ErrorResponse(BaseModel):
             error_data["request_id"] = str(request_id)
 
         return cls(error=error_data)
+
+
+class RateInfo(BaseModel):
+    """Individual exchange rate information."""
+
+    currency: str = Field(..., description="Currency code")
+    rate: Decimal = Field(..., description="Exchange rate relative to USD")
+    last_updated: datetime = Field(..., description="When this rate was last updated")
+
+
+class RatesResponse(BaseModel):
+    """Response model for current exchange rates."""
+
+    base_currency: str = Field(default="USD", description="Base currency for all rates")
+    rates: list[RateInfo] = Field(..., description="List of exchange rates")
+    timestamp: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        description="When rates were retrieved",
+    )
+    metadata: dict[str, str] = Field(
+        default_factory=lambda: {
+            "rate_source": "simulated",
+            "total_currencies": "10",
+        },
+        description="Additional metadata about the rates",
+    )

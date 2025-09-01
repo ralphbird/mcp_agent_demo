@@ -1,4 +1,4 @@
-.PHONY: help install test lint format type-check quality dev run clean test-quick markdownlint install-markdownlint
+.PHONY: help install test lint format type-check quality dev run clean test-quick markdownlint install-markdownlint install-precommit
 
 # Default target
 help:
@@ -7,6 +7,7 @@ help:
 	@echo "Development:"
 	@echo "  install           - Install dependencies for API service"
 	@echo "  install-markdownlint - Install markdownlint globally (run once)"
+	@echo "  install-precommit - Install and setup pre-commit hooks (run once)"
 	@echo "  run               - Run the API server"
 	@echo "  dev               - Run API server in development mode with auto-reload"
 	@echo ""
@@ -86,6 +87,15 @@ install-markdownlint:
 	@echo "Installing markdownlint globally..."
 	npm install -g markdownlint-cli
 	@echo "markdownlint installed! You can now run 'make markdownlint'"
+
+# Setup pre-commit hooks (run once)
+install-precommit:
+	@echo "Installing pre-commit..."
+	pip install pre-commit
+	@echo "Installing pre-commit hooks..."
+	pre-commit install
+	@echo "Pre-commit hooks installed! They will run automatically before each commit."
+	@echo "To run manually: pre-commit run --all-files"
 
 # API-specific commands (for when we have multiple services)
 api-install:

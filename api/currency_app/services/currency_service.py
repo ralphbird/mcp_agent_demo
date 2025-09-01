@@ -2,21 +2,25 @@
 
 from datetime import UTC, datetime
 from decimal import ROUND_HALF_EVEN, Decimal
+from typing import ClassVar
 
-from currency_app.models.conversion import ConversionRequest, ConversionResponse
+from currency_app.models.conversion import (
+    ConversionRequest,
+    ConversionResponse,
+    RateInfo,
+    RatesResponse,
+)
 
 
 class InvalidCurrencyError(Exception):
     """Raised when an invalid currency code is provided."""
-
-    pass
 
 
 class CurrencyService:
     """Service for currency conversion with simulated exchange rates."""
 
     # Static exchange rates relative to USD (as of a simulated snapshot)
-    EXCHANGE_RATES: dict[str, Decimal] = {
+    EXCHANGE_RATES: ClassVar[dict[str, Decimal]] = {
         "USD": Decimal("1.0000"),
         "EUR": Decimal("0.8523"),
         "GBP": Decimal("0.7891"),
@@ -29,7 +33,7 @@ class CurrencyService:
         "NZD": Decimal("1.4321"),
     }
 
-    SUPPORTED_CURRENCIES: set[str] = set(EXCHANGE_RATES.keys())
+    SUPPORTED_CURRENCIES: ClassVar[set[str]] = set(EXCHANGE_RATES.keys())
 
     def __init__(self):
         """Initialize the currency service."""
@@ -127,3 +131,20 @@ class CurrencyService:
             Sorted list of supported currency codes
         """
         return sorted(self.SUPPORTED_CURRENCIES)
+
+    def get_current_rates(self) -> RatesResponse:
+        """Get all current exchange rates.
+
+        Returns:
+            Response containing all current exchange rates relative to USD
+        """
+        rates = []
+        for currency, rate in sorted(self.EXCHANGE_RATES.items()):
+            rate_info = RateInfo(
+                currency=currency,
+                rate=rate,
+                last_updated=self.rate_timestamp,
+            )
+            rates.append(rate_info)
+
+        return RatesResponse(rates=rates)

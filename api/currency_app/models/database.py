@@ -25,6 +25,7 @@ class ConversionHistory(Base):
     conversion_timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     def __repr__(self) -> str:
+        """Return string representation of ConversionHistory."""
         return (
             f"<ConversionHistory("
             f"id={self.id}, "

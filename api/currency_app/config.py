@@ -63,13 +63,3 @@ class Settings(BaseSettings):
 
 # Global settings instance
 settings = Settings()
-
-
-def get_database_url() -> str:
-    """Get the database URL for backward compatibility."""
-    return settings.database_url
-
-
-def get_data_dir() -> Path:
-    """Get the data directory for backward compatibility."""
-    return settings.data_dir

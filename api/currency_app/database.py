@@ -3,11 +3,11 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from currency_app.config import get_database_url
+from currency_app.config import settings
 from currency_app.models.database import Base
 
 # Database configuration
-DATABASE_URL = get_database_url()
+DATABASE_URL = settings.database_url
 
 # Create engine
 engine = create_engine(

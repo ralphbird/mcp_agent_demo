@@ -96,7 +96,7 @@ convention = "google"        # see python standards for discussion on docstyle
 ignore-var-parameters = true
 
 [tool.pyright]
-include = ["currency_app"]
+include = ["api"]
 exclude = ["**/node_modules", "**/__pycache__", ".venv"]
 pythonVersion = "3.12"
 typeCheckingMode = "basic"

@@ -1,5 +1,5 @@
 # Multi-stage Docker build for Currency Conversion API
-FROM python:3.12-slim as base
+FROM python:3.12.11-slim AS base
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
@@ -14,7 +14,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Poetry
-RUN pip install poetry==1.8.3
+RUN pip install poetry==2.1.3
 
 # Configure Poetry
 ENV POETRY_NO_INTERACTION=1 \
@@ -30,13 +30,14 @@ COPY pyproject.toml poetry.lock ./
 RUN poetry install --only=main --no-root && rm -rf $POETRY_CACHE_DIR
 
 # API Service Stage
-FROM base as api
+FROM base AS api
 
 # Copy application code
 COPY api/ ./api/
 COPY scripts/ ./scripts/
+COPY README.md ./
 
-# Install the application
+# Install the application (including the current project)
 RUN poetry install --only=main
 
 # Create directories for data persistence
@@ -53,13 +54,14 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 CMD ["poetry", "run", "uvicorn", "currency_app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
 # Dashboard Service Stage
-FROM base as dashboard
+FROM base AS dashboard
 
 # Copy application code
 COPY api/ ./api/
 COPY scripts/ ./scripts/
+COPY README.md ./
 
-# Install the application
+# Install the application (including the current project)
 RUN poetry install --only=main
 
 # Create directories for data persistence

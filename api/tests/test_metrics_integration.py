@@ -2,9 +2,15 @@
 
 import re
 
+# Create test database in tests/databases subfolder
+from pathlib import Path
+
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
+from currency_app.database import get_db
 from currency_app.main import app
 from currency_app.middleware.metrics import (
     CURRENCY_CONVERSIONS_TOTAL,
@@ -14,6 +20,24 @@ from currency_app.middleware.metrics import (
     REQUEST_COUNT,
     REQUEST_DURATION,
 )
+from currency_app.models.database import Base
+
+# Ensure the test databases directory exists
+test_db_dir = Path(__file__).parent / "databases"
+test_db_dir.mkdir(exist_ok=True)
+
+SQLALCHEMY_DATABASE_URL = f"sqlite:///{test_db_dir}/test_metrics_integration.db"
+engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+
+def override_get_db():
+    """Override database dependency for testing."""
+    try:
+        db = TestingSessionLocal()
+        yield db
+    finally:
+        db.close()
 
 
 class TestMetricsIntegration:
@@ -21,8 +45,21 @@ class TestMetricsIntegration:
 
     @pytest.fixture
     def client(self):
-        """Create test client."""
-        return TestClient(app)
+        """Create test client with test database."""
+        # Create test tables
+        Base.metadata.create_all(bind=engine)
+
+        # Override database dependency for this test only
+        app.dependency_overrides[get_db] = override_get_db
+
+        try:
+            with TestClient(app) as test_client:
+                yield test_client
+        finally:
+            # Clean up database override and tables
+            if get_db in app.dependency_overrides:
+                del app.dependency_overrides[get_db]
+            Base.metadata.drop_all(bind=engine)
 
     @pytest.fixture(autouse=True)
     def clear_metrics(self):

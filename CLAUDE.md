@@ -40,6 +40,10 @@ poetry run pyright        # type checking
 
 # All quality checks
 poetry run ruff format . && poetry run ruff check . && poetry run pyright
+
+# Markdown linting (requires markdownlint-cli)
+make markdownlint
+make install-markdownlint  # one-time setup
 ```
 
 ## Code Style
@@ -63,3 +67,4 @@ This is a currency conversion demo application with the following structure:
 - `tests/` - Test suite
 
 Update this section as the architecture develops with actual implementation details.
+- use markdownlint to format markdown files

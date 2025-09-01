@@ -1,18 +1,27 @@
-.PHONY: help install test lint format type-check quality dev run clean test-quick
+.PHONY: help install test lint format type-check quality dev run clean test-quick markdownlint install-markdownlint
 
 # Default target
 help:
 	@echo "Available commands:"
-	@echo "  install     - Install dependencies for API service"
-	@echo "  run         - Run the API server"
-	@echo "  dev         - Run API server in development mode with auto-reload"
-	@echo "  test        - Run all tests"
-	@echo "  test-quick  - Run tests with minimal output"
-	@echo "  lint        - Run linting (ruff check)"
-	@echo "  format      - Format code (ruff format)"
-	@echo "  type-check  - Run type checking (pyright)"
-	@echo "  quality     - Run all quality checks (format, lint, type-check)"
-	@echo "  clean       - Clean up temporary files and databases"
+	@echo ""
+	@echo "Development:"
+	@echo "  install           - Install dependencies for API service"
+	@echo "  install-markdownlint - Install markdownlint globally (run once)"
+	@echo "  run               - Run the API server"
+	@echo "  dev               - Run API server in development mode with auto-reload"
+	@echo ""
+	@echo "Testing & Quality:"
+	@echo "  test              - Run all tests"
+	@echo "  test-quick        - Run tests with minimal output"
+	@echo "  lint              - Run linting (ruff check)"
+	@echo "  format            - Format code (ruff format)"
+	@echo "  type-check        - Run type checking (pyright)"
+	@echo "  markdownlint      - Lint markdown files"
+	@echo "  quality           - Run all quality checks (format, lint, type-check, markdownlint)"
+	@echo "  check             - Run quality checks + tests (full validation)"
+	@echo ""
+	@echo "Utilities:"
+	@echo "  clean             - Clean up temporary files and databases"
 
 # Installation
 install:
@@ -50,7 +59,11 @@ type-check:
 	@echo "Type checking API code..."
 	cd api && poetry run pyright
 
-quality: format lint type-check
+markdownlint:
+	@echo "Linting markdown files..."
+	npx markdownlint README.md api/README.md CLAUDE.md .claude/*.md 2>/dev/null || echo "markdownlint not available - install with: npm install -g markdownlint-cli"
+
+quality: format lint type-check markdownlint
 	@echo "All quality checks completed!"
 
 # Utility commands
@@ -67,6 +80,12 @@ clean:
 # Development workflow
 check: quality test
 	@echo "Development checks completed - code is ready!"
+
+# Setup markdownlint (run once)
+install-markdownlint:
+	@echo "Installing markdownlint globally..."
+	npm install -g markdownlint-cli
+	@echo "markdownlint installed! You can now run 'make markdownlint'"
 
 # API-specific commands (for when we have multiple services)
 api-install:

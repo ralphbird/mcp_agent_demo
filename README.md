@@ -6,18 +6,27 @@ debugging techniques, monitoring, and observability practices in a realistic mic
 ## 🎯 Project Status
 
 **Phase 1: ✅ COMPLETE** - Core API Foundation
-**Phase 2: 🚧 Planned** - Extended API & Dashboard
+**Phase 2: ✅ COMPLETE** - Extended API & Dashboard
 **Phase 3: 📋 Planned** - Full Observability & Advanced Features
 
-## 🚀 Features (Phase 1)
+## 🚀 Features
 
-### Core API
+### Phase 1: Core API Foundation
 
 - **Currency Conversion**: Convert between 10 major currencies with real-time simulated rates
 - **Health Monitoring**: Basic and detailed health check endpoints
 - **Database Integration**: SQLite storage for complete conversion history
 - **Input Validation**: Comprehensive request validation with structured error responses
 - **Precision Handling**: Proper decimal precision with banker's rounding for financial accuracy
+
+### Phase 2: Extended API & Dashboard
+
+- **Exchange Rates API**: Current rates endpoint with comprehensive rate data
+- **Interactive Dashboard**: Streamlit-based web interface with:
+  - Real-time currency converter
+  - Exchange rates table and comparison charts
+  - Currency strength visualizations
+  - Summary statistics and analytics
 
 ### Supported Currencies
 
@@ -27,9 +36,10 @@ debugging techniques, monitoring, and observability practices in a realistic mic
 
 ### Development Tools
 
-- **Testing**: Comprehensive test suite with 27 tests (unit + integration)
-- **Code Quality**: Ruff for formatting/linting + Pyright for type checking
+- **Testing**: Comprehensive test suite with 30 tests (unit + integration)
+- **Code Quality**: Ruff for formatting/linting + Pyright for type checking + Markdownlint
 - **Workflow**: Make commands for streamlined development
+- **Dashboard**: Streamlit for interactive data visualization
 
 ## 🛠️ Quick Start
 
@@ -37,6 +47,7 @@ debugging techniques, monitoring, and observability practices in a realistic mic
 
 - Python 3.12+
 - Poetry
+- Node.js (for markdown linting)
 
 ### Installation & Setup
 
@@ -48,7 +59,7 @@ cd mcp_agent_demo
 make install
 # or: cd api && poetry install
 
-# Run the application
+# Run the API server
 make dev
 # or: cd api && poetry run uvicorn currency_app.main:app --reload
 ```
@@ -58,6 +69,20 @@ The API will be available at:
 - **Server**: <http://localhost:8000>
 - **Documentation**: <http://localhost:8000/docs>
 - **Health Check**: <http://localhost:8000/health>
+
+### Dashboard Setup
+
+```bash
+# Start the API first (in one terminal)
+make dev
+
+# Run the Streamlit dashboard (in another terminal)
+cd api && poetry run streamlit run dashboard/app.py
+```
+
+The dashboard will be available at:
+
+- **Dashboard**: <http://localhost:8501>
 
 ### Quick Test
 
@@ -79,6 +104,7 @@ curl -X POST "http://localhost:8000/api/v1/convert" \
 ### Core Endpoints
 
 - `POST /api/v1/convert` - Convert currency amounts
+- `GET /api/v1/rates` - Get current exchange rates for all supported currencies
 - `GET /health` - Basic health check
 - `GET /health/detailed` - Detailed system health with database connectivity
 - `GET /` - API information and links
@@ -108,6 +134,34 @@ Response:
 }
 ```
 
+**Get Current Rates:**
+
+```json
+GET /api/v1/rates
+
+Response:
+{
+  "base_currency": "USD",
+  "rates": [
+    {
+      "currency": "USD",
+      "rate": 1.0000,
+      "last_updated": "2025-08-29T10:30:00Z"
+    },
+    {
+      "currency": "EUR",
+      "rate": 0.8523,
+      "last_updated": "2025-08-29T10:30:00Z"
+    }
+  ],
+  "timestamp": "2025-08-29T10:30:15Z",
+  "metadata": {
+    "rate_source": "simulated",
+    "total_currencies": "10"
+  }
+}
+```
+
 ## 🛠️ Development
 
 ### Make Commands
@@ -118,7 +172,8 @@ make install       # Install dependencies
 make dev           # Run development server with auto-reload
 make test          # Run all tests with verbose output
 make test-quick    # Run tests with minimal output
-make quality       # Run formatting, linting, and type checking
+make quality       # Run formatting, linting, type checking, and markdown linting
+make markdownlint  # Lint markdown files
 make clean         # Clean up temporary files and databases
 make check         # Run quality checks + tests (full validation)
 ```
@@ -146,13 +201,16 @@ poetry run pyright
 
 ```text
 mcp_agent_demo/
-├── api/                          # Phase 1: Core API service
+├── api/                          # Core API service
 │   ├── currency_app/            # Main application code
 │   │   ├── models/              # Pydantic & SQLAlchemy models
 │   │   ├── routers/             # FastAPI route handlers
 │   │   ├── services/            # Business logic
 │   │   ├── database.py          # Database configuration
 │   │   └── main.py              # FastAPI application
+│   ├── dashboard/               # Phase 2: Streamlit dashboard
+│   │   ├── app.py              # Main dashboard application
+│   │   └── __init__.py         # Package initialization
 │   ├── tests/                   # Test suite
 │   ├── pyproject.toml          # Poetry configuration
 │   └── README.md               # API-specific documentation
@@ -164,13 +222,6 @@ mcp_agent_demo/
 
 ## 🔮 Roadmap
 
-### Phase 2: Extended API & Dashboard (Planned)
-
-- **GET /api/v1/rates** - Current exchange rates endpoint
-- **Rate Management** - Dynamic rate updates and caching
-- **Streamlit Dashboard** - Interactive web interface for conversions
-- **Enhanced Testing** - Expanded coverage and integration tests
-
 ### Phase 3: Full Observability & Advanced Features (Planned)
 
 - **GET /api/v1/rates/history** - Historical rate data and analytics
@@ -181,27 +232,31 @@ mcp_agent_demo/
 
 ## 🧪 Testing
 
-The project includes a comprehensive test suite:
+The project includes a comprehensive test suite with 30 tests:
 
-- **Unit Tests**: Currency service logic, validation, calculations
-- **Integration Tests**: API endpoints, database operations, error handling
+- **Unit Tests**: Currency service logic, validation, calculations (15 tests)
+- **Integration Tests**: API endpoints, database operations, error handling (15 tests)
+- **Phase 2 Coverage**: Exchange rates endpoint testing (3 new tests)
 - **Edge Cases**: Invalid inputs, boundary conditions, error scenarios
 
 ```bash
 # Run specific test categories
 poetry run pytest tests/test_currency_service.py  # Unit tests
-poetry run pytest tests/test_api.py              # Integration tests
+poetry run pytest tests/test_api.py              # Integration tests (includes rates endpoint)
 ```
 
 ## 🏗️ Architecture
 
-**Phase 1 Architecture:**
+**Current Architecture (Phases 1 & 2):**
 
-- **FastAPI**: Modern async web framework
+- **FastAPI**: Modern async web framework with comprehensive API endpoints
 - **SQLAlchemy**: Database ORM with SQLite backend
 - **Pydantic**: Data validation and serialization
+- **Streamlit**: Interactive dashboard for data visualization
+- **Plotly**: Advanced charting and visualization components
+- **Pandas**: Data manipulation for dashboard analytics
 - **Poetry**: Dependency management and packaging
-- **Ruff + Pyright**: Code quality and type safety
+- **Ruff + Pyright + Markdownlint**: Code quality and documentation standards
 
 **Key Design Decisions:**
 
@@ -215,10 +270,10 @@ poetry run pytest tests/test_api.py              # Integration tests
 
 This is a demo project showcasing incremental development practices. The codebase follows:
 
-- **Code Quality**: Ruff formatting + linting, Pyright type checking
-- **Testing**: >80% coverage target with comprehensive test scenarios
-- **Documentation**: Inline docstrings + architectural documentation
-- **Git Workflow**: Descriptive commits with proper attribution
+- **Code Quality**: Ruff formatting + linting, Pyright type checking, Markdownlint documentation standards
+- **Testing**: >80% coverage target with comprehensive test scenarios (30 tests across phases)
+- **Documentation**: Inline docstrings + architectural documentation + interactive dashboards
+- **Git Workflow**: Descriptive commits with proper attribution and pre-commit hooks
 
 ## 📄 License
 

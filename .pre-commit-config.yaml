@@ -32,6 +32,6 @@ repos:
       - id: markdownlint
         name: markdownlint
         language: system
-        entry: npx markdownlint
+        entry: markdownlint
         types_or: [markdown]
         args: [--fix]

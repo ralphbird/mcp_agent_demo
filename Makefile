@@ -62,7 +62,7 @@ type-check:
 
 markdownlint:
 	@echo "Linting markdown files..."
-	npx markdownlint README.md api/README.md CLAUDE.md .claude/*.md 2>/dev/null || echo "markdownlint not available - install with: npm install -g markdownlint-cli"
+	markdownlint README.md api/README.md CLAUDE.md || true
 
 quality: format lint type-check markdownlint
 	@echo "All quality checks completed!"

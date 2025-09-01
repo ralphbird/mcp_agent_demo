@@ -13,7 +13,7 @@ help:
 	@echo "  dashboard         - Run the Streamlit dashboard (requires API server running)"
 	@echo ""
 	@echo "Testing & Quality:"
-	@echo "  test              - Run all tests"
+	@echo "  test              - Run all tests with coverage report"
 	@echo "  test-quick        - Run tests with minimal output"
 	@echo "  lint              - Run linting (ruff check)"
 	@echo "  format            - Format code (ruff format)"
@@ -46,8 +46,8 @@ dashboard:
 
 # Testing
 test:
-	@echo "Running API tests..."
-	cd api && poetry run pytest -v
+	@echo "Running API tests with coverage..."
+	cd api && poetry run pytest -v --cov=currency_app --cov-report=term-missing --cov-report=html
 
 test-quick:
 	@echo "Running API tests (quick)..."
@@ -81,7 +81,7 @@ clean:
 	find . -type d -name ".pytest_cache" -delete
 	find . -type f -name "*.db" -delete
 	find . -type f -name "test_*.db" -delete
-	cd api && rm -rf .coverage htmlcov/
+	cd api && rm -rf .coverage htmlcov/ .coverage.*
 	@echo "Cleanup completed!"
 
 # Development workflow

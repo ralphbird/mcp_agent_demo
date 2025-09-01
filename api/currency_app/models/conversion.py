@@ -52,7 +52,7 @@ class ConversionResponse(BaseModel):
 class ErrorResponse(BaseModel):
     """Error response model."""
 
-    error: dict[str, str | dict[str, str] | datetime] = Field(..., description="Error details")
+    error: dict[str, str | dict[str, str]] = Field(..., description="Error details")
 
     @classmethod
     def create(
@@ -63,10 +63,10 @@ class ErrorResponse(BaseModel):
         request_id: UUID | None = None,
     ) -> "ErrorResponse":
         """Create an error response."""
-        error_data = {
+        error_data: dict[str, str | dict[str, str]] = {
             "code": code,
             "message": message,
-            "timestamp": datetime.now(UTC),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
         if details:
             error_data["details"] = details

@@ -85,15 +85,13 @@ def main():
     st.sidebar.title("Navigation")
     page = st.sidebar.selectbox(
         "Choose a page",
-        ["Currency Converter", "Exchange Rates", "Rate Charts", "Historical Trends"],
+        ["Currency Converter", "Exchange Rates", "Historical Trends"],
     )
 
     if page == "Currency Converter":
         show_converter_page()
     elif page == "Exchange Rates":
         show_rates_page()
-    elif page == "Rate Charts":
-        show_charts_page()
     elif page == "Historical Trends":
         show_historical_trends_page()
 
@@ -192,107 +190,6 @@ def show_rates_page():
         hide_index=True,
         width="stretch",
     )
-
-    # Rate comparison
-    st.subheader("Rate Comparison")
-    selected_currencies = st.multiselect(
-        "Select currencies to compare",
-        rates_df["currency"].tolist(),
-        default=["USD", "EUR", "GBP", "JPY"],
-    )
-
-    if selected_currencies:
-        filtered_df = rates_df[rates_df["currency"].isin(selected_currencies)]
-
-        # Create horizontal bar chart
-        fig = px.bar(
-            filtered_df,
-            x="rate",
-            y="currency",
-            orientation="h",
-            title="Exchange Rates Comparison (Relative to USD)",
-            labels={"rate": "Exchange Rate", "currency": "Currency"},
-        )
-        fig.update_layout(height=400)
-        st.plotly_chart(fig, width="stretch")
-
-
-def show_charts_page():
-    """Show the rate charts page."""
-    st.header("📈 Exchange Rate Visualizations")
-
-    rates_data = get_current_rates()
-    if not rates_data:
-        st.error("Unable to load rates data")
-        return
-
-    rates_df = pd.DataFrame(rates_data["rates"])
-    rates_df["rate"] = rates_df["rate"].astype(float)
-
-    # Currency strength vs USD
-    st.subheader("Currency Strength vs USD")
-
-    # Separate currencies stronger and weaker than USD
-    stronger_than_usd = rates_df[rates_df["rate"] < 1.0].copy()
-    weaker_than_usd = rates_df[rates_df["rate"] > 1.0].copy()
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        if not stronger_than_usd.empty:
-            st.write("**Stronger than USD** (rate < 1.0)")
-            fig1 = px.bar(
-                stronger_than_usd,
-                x="currency",
-                y="rate",
-                title="Currencies Stronger than USD",
-                color="rate",
-                color_continuous_scale="greens",
-            )
-            st.plotly_chart(fig1, width="stretch")
-
-    with col2:
-        if not weaker_than_usd.empty:
-            st.write("**Weaker than USD** (rate > 1.0)")
-            fig2 = px.bar(
-                weaker_than_usd,
-                x="currency",
-                y="rate",
-                title="Currencies Weaker than USD",
-                color="rate",
-                color_continuous_scale="reds",
-            )
-            st.plotly_chart(fig2, width="stretch")
-
-    # Pie chart of relative values
-    st.subheader("Relative Currency Distribution")
-
-    # For pie chart, we'll use inverse rates to show relative strength
-    rates_df["inverse_rate"] = 1 / rates_df["rate"]
-
-    fig3 = px.pie(
-        rates_df,
-        values="inverse_rate",
-        names="currency",
-        title="Relative Currency Values (Inverse Rates)",
-    )
-    st.plotly_chart(fig3, width="stretch")
-
-    # Summary statistics
-    st.subheader("Summary Statistics")
-    col1, col2, col3, col4 = st.columns(4)
-
-    with col1:
-        st.metric("Total Currencies", len(rates_df))
-
-    with col2:
-        st.metric("Strongest Currency", rates_df.loc[rates_df["rate"].idxmin(), "currency"])
-
-    with col3:
-        st.metric("Weakest Currency", rates_df.loc[rates_df["rate"].idxmax(), "currency"])
-
-    with col4:
-        st.metric("Average Rate", f"{rates_df['rate'].mean():.4f}")
 
 
 def show_historical_trends_page():

@@ -208,3 +208,8 @@ __marimo__/
 
 # Claude Code
 .claude
+
+# SQLite databases (generated at runtime)
+*.db
+*.sqlite
+*.sqlite3

@@ -1,4 +1,4 @@
-.PHONY: help setup install test lint format type-check quality dev run dashboard clean test-quick markdownlint install-markdownlint install-precommit demo-data clean-demo-data
+.PHONY: help setup install test lint format type-check quality dev run dashboard clean test-quick markdownlint install-markdownlint install-precommit demo-data clean-demo-data docker-build docker-up docker-down docker-logs docker-clean docker-monitor docker-setup docker-rebuild
 
 # Default target
 help:
@@ -28,6 +28,14 @@ help:
 	@echo "Data & Database:"
 	@echo "  demo-data         - Generate demo historical exchange rate data"
 	@echo "  clean-demo-data   - Clean database and regenerate demo data"
+	@echo ""
+	@echo "🐳 Docker:"
+	@echo "  docker-build      - Build Docker images"
+	@echo "  docker-up         - Start all services with Docker Compose"
+	@echo "  docker-down       - Stop all Docker services"
+	@echo "  docker-logs       - View Docker service logs"
+	@echo "  docker-clean      - Clean Docker images and volumes"
+	@echo "  docker-monitor    - Start services with monitoring (Prometheus + Grafana)"
 	@echo ""
 	@echo "Utilities:"
 	@echo "  clean             - Clean up temporary files and databases"
@@ -108,7 +116,7 @@ type-check:
 
 markdownlint:
 	@echo "Linting markdown files..."
-	markdownlint README.md api/README.md CLAUDE.md || true
+	markdownlint README.md api/README.md CLAUDE.md
 
 quality: format lint type-check markdownlint
 	@echo "All quality checks completed!"
@@ -182,3 +190,68 @@ demo-data:
 clean-demo-data:
 	@echo "Cleaning database and regenerating demo data..."
 	poetry run python scripts/clean_and_regenerate.py
+
+# Docker commands
+docker-build:
+	@echo "🐳 Building Docker images..."
+	docker-compose build
+	@echo "✅ Docker images built successfully!"
+
+docker-up:
+	@echo "🐳 Starting all services with Docker Compose..."
+	docker-compose up -d
+	@echo "✅ Services started!"
+	@echo ""
+	@echo "🚀 Services available at:"
+	@echo "   API: http://localhost:8000"
+	@echo "   API Docs: http://localhost:8000/docs"
+	@echo "   Dashboard: http://localhost:8501"
+	@echo "   Metrics: http://localhost:8000/metrics"
+	@echo ""
+	@echo "📊 View logs: make docker-logs"
+	@echo "🛑 Stop services: make docker-down"
+
+docker-down:
+	@echo "🐳 Stopping Docker services..."
+	docker-compose down
+	@echo "✅ Services stopped!"
+
+docker-logs:
+	@echo "📊 Viewing Docker service logs (press Ctrl+C to exit)..."
+	docker-compose logs -f
+
+docker-clean:
+	@echo "🧹 Cleaning Docker images and volumes..."
+	docker-compose down -v --rmi all --remove-orphans
+	docker system prune -f
+	@echo "✅ Docker cleanup completed!"
+
+docker-monitor:
+	@echo "🐳 Starting services with monitoring stack..."
+	docker-compose --profile monitoring up -d
+	@echo "✅ Services with monitoring started!"
+	@echo ""
+	@echo "🚀 Services available at:"
+	@echo "   API: http://localhost:8000"
+	@echo "   Dashboard: http://localhost:8501"
+	@echo "   Prometheus: http://localhost:9090"
+	@echo "   Grafana: http://localhost:3000 (admin/admin)"
+	@echo ""
+	@echo "📊 View logs: make docker-logs"
+	@echo "🛑 Stop services: make docker-down"
+
+# Docker development workflow
+docker-setup: docker-build
+	@echo "🐳 Setting up Docker environment..."
+	make docker-up
+	@echo "⏳ Waiting for services to be ready..."
+	sleep 10
+	@echo "🗄️ Generating demo data in container..."
+	docker-compose exec api poetry run python scripts/generate_demo_data.py
+	@echo "✅ Docker setup completed!"
+
+docker-rebuild:
+	@echo "🐳 Rebuilding and restarting services..."
+	docker-compose down
+	docker-compose build --no-cache
+	make docker-up

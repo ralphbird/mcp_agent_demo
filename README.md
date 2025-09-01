@@ -8,6 +8,7 @@ debugging techniques, monitoring, and observability practices in a realistic mic
 **Phase 1: ✅ COMPLETE** - Core API Foundation
 **Phase 2: ✅ COMPLETE** - Extended API & Dashboard
 **Phase 3: ✅ COMPLETE** - Full Observability & Advanced Features
+**Phase 4: ✅ COMPLETE** - Docker Deployment & Production Ready
 
 ## 🚀 Features
 
@@ -36,6 +37,15 @@ debugging techniques, monitoring, and observability practices in a realistic mic
 - **Production Monitoring**: `/metrics` endpoint ready for Prometheus/Grafana integration
 - **Demo Data Generation**: Realistic historical data with proper base currency handling (USD = 1.0)
 
+### Phase 4: Docker Deployment & Production Ready
+
+- **Docker Containerization**: Multi-stage Dockerfile for API and Dashboard services
+- **Docker Compose**: Complete orchestration with persistent volumes and networking
+- **Configuration Management**: Pydantic Settings with environment variable support
+- **Monitoring Stack**: Optional Prometheus + Grafana deployment with profiles
+- **Production Features**: Health checks, proper logging, graceful shutdowns
+- **One-Command Deployment**: `make docker-up` for instant stack deployment
+
 ### Supported Currencies
 
 - USD (US Dollar), EUR (Euro), GBP (British Pound)
@@ -53,9 +63,16 @@ debugging techniques, monitoring, and observability practices in a realistic mic
 
 ### Prerequisites
 
+#### Option 1: Local Development**
+
 - Python 3.12+
 - Poetry
 - Node.js (for markdown linting)
+
+#### Option 2: Docker Deployment**
+
+- Docker & Docker Compose
+- No other dependencies required!
 
 ### ⚡ One-Command Setup
 
@@ -105,6 +122,55 @@ make dashboard
 The dashboard will be available at:
 
 - **Dashboard**: <http://localhost:8501>
+
+### 🐳 Docker Deployment (Recommended)
+
+The easiest way to run the complete application stack:
+
+```bash
+# Build and start all services
+make docker-up
+
+# Or manually:
+docker-compose up -d
+```
+
+This will start:
+
+- **API**: <http://localhost:8000> (FastAPI with automatic demo data)
+- **Dashboard**: <http://localhost:8501> (Streamlit interface)
+- **Metrics**: <http://localhost:8000/metrics> (Prometheus metrics)
+
+#### Docker Commands
+
+```bash
+# Complete Docker setup (build + start + demo data)
+make docker-setup
+
+# View service logs
+make docker-logs
+
+# Stop all services
+make docker-down
+
+# Clean everything (images, volumes, containers)
+make docker-clean
+
+# Start with monitoring stack (Prometheus + Grafana)
+make docker-monitor
+```
+
+#### With Monitoring Stack
+
+```bash
+# Start with Prometheus & Grafana
+make docker-monitor
+```
+
+Additional services available:
+
+- **Prometheus**: <http://localhost:9090> (Metrics collection)
+- **Grafana**: <http://localhost:3000> (admin/admin - Dashboards)
 
 ### Quick Test
 

@@ -1,0 +1,111 @@
+version: '3.8'
+
+services:
+  # FastAPI Currency Conversion API
+  api:
+    build:
+      context: .
+      target: api
+    container_name: currency-api
+    ports:
+      - "8000:8000"
+    volumes:
+      # Persistent database storage
+      - ./data:/app/data
+      # Mount the main database for development
+      - ./currency_demo.db:/app/currency_demo.db
+    environment:
+      - PYTHONPATH=/app
+      - DATABASE_URL=sqlite:///currency_demo.db
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - currency-network
+
+  # Streamlit Dashboard
+  dashboard:
+    build:
+      context: .
+      target: dashboard
+    container_name: currency-dashboard
+    ports:
+      - "8501:8501"
+    volumes:
+      # Persistent database storage
+      - ./data:/app/data
+      # Mount the main database for development
+      - ./currency_demo.db:/app/currency_demo.db
+    environment:
+      - PYTHONPATH=/app
+      - DATABASE_URL=sqlite:///currency_demo.db
+      - API_BASE_URL=http://api:8000
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - currency-network
+
+  # Optional: Prometheus for metrics collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: currency-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./docker/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    depends_on:
+      - api
+    restart: unless-stopped
+    networks:
+      - currency-network
+    profiles:
+      - monitoring
+
+  # Optional: Grafana for metrics visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: currency-grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    networks:
+      - currency-network
+    profiles:
+      - monitoring
+
+volumes:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  currency-network:
+    driver: bridge

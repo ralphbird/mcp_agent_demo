@@ -229,8 +229,7 @@ mcp_agent_demo/
 - **GET /api/v1/rates/history** - Historical rate data and analytics
 - **Monitoring Stack** - Prometheus metrics + Grafana dashboards
 - **Load Testing** - Performance testing capabilities
-- **Containerization** - Docker + Docker Compose deployment
-- **CI/CD Pipeline** - Automated testing and deployment
+- **Containerization** - Docker + Docker Compose for local deployment
 
 ## 🧪 Testing
 

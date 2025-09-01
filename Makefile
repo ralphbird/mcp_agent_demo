@@ -1,4 +1,4 @@
-.PHONY: help install test lint format type-check quality dev run clean test-quick markdownlint install-markdownlint install-precommit
+.PHONY: help install test lint format type-check quality dev run dashboard clean test-quick markdownlint install-markdownlint install-precommit
 
 # Default target
 help:
@@ -10,6 +10,7 @@ help:
 	@echo "  install-precommit - Install and setup pre-commit hooks (run once)"
 	@echo "  run               - Run the API server"
 	@echo "  dev               - Run API server in development mode with auto-reload"
+	@echo "  dashboard         - Run the Streamlit dashboard (requires API server running)"
 	@echo ""
 	@echo "Testing & Quality:"
 	@echo "  test              - Run all tests"
@@ -37,6 +38,11 @@ run:
 dev:
 	@echo "Starting Currency Conversion API server in development mode..."
 	cd api && poetry run uvicorn currency_app.main:app --host 0.0.0.0 --port 8000 --reload
+
+dashboard:
+	@echo "Starting Streamlit dashboard..."
+	@echo "Make sure the API server is running first (make dev in another terminal)"
+	cd api && poetry run streamlit run dashboard/app.py
 
 # Testing
 test:

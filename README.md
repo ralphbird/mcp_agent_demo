@@ -77,7 +77,8 @@ The API will be available at:
 make dev
 
 # Run the Streamlit dashboard (in another terminal)
-cd api && poetry run streamlit run dashboard/app.py
+make dashboard
+# or: cd api && poetry run streamlit run dashboard/app.py
 ```
 
 The dashboard will be available at:
@@ -170,6 +171,7 @@ Response:
 make help          # Show all available commands
 make install       # Install dependencies
 make dev           # Run development server with auto-reload
+make dashboard     # Run Streamlit dashboard (requires API server running)
 make test          # Run all tests with verbose output
 make test-quick    # Run tests with minimal output
 make quality       # Run formatting, linting, type checking, and markdown linting

@@ -1,0 +1,22 @@
+[project]
+name = "mcp-agent-demo"
+version = "0.1.0"
+description = "A demo app to show how we can use AI agents powered with MCP servers to debug issues."
+authors = [
+    {name = "rbird",email = "rbird@pagerduty.com"}
+]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+]
+
+[tool.poetry]
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.12.11"
+pyright = "^1.1.404"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

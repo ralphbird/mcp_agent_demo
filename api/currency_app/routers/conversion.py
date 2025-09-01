@@ -1,0 +1,71 @@
+"""API routes for currency conversion."""
+
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+
+from currency_app.database import get_db
+from currency_app.models.conversion import ConversionRequest, ConversionResponse, ErrorResponse
+from currency_app.models.database import ConversionHistory
+from currency_app.services.currency_service import CurrencyService, InvalidCurrencyError
+
+router = APIRouter(prefix="/api/v1", tags=["conversion"])
+
+
+@router.post("/convert", response_model=ConversionResponse)
+async def convert_currency(
+    request: ConversionRequest, db: Session = Depends(get_db)
+) -> ConversionResponse:
+    """Convert currency from one type to another.
+
+    Args:
+        request: Conversion request with amount and currencies
+        db: Database session
+
+    Returns:
+        Conversion response with results
+
+    Raises:
+        HTTPException: If currency is invalid or conversion fails
+    """
+    try:
+        # Initialize currency service
+        currency_service = CurrencyService()
+
+        # Perform conversion
+        response = currency_service.convert_currency(request)
+
+        # Store conversion in database
+        conversion_record = ConversionHistory(
+            conversion_id=str(response.conversion_id),
+            request_id=str(response.request_id) if response.request_id else None,
+            amount=float(response.amount),
+            from_currency=response.from_currency,
+            to_currency=response.to_currency,
+            converted_amount=float(response.converted_amount),
+            exchange_rate=float(response.exchange_rate),
+            conversion_timestamp=response.conversion_timestamp,
+        )
+
+        db.add(conversion_record)
+        db.commit()
+        db.refresh(conversion_record)
+
+        return response
+
+    except InvalidCurrencyError as e:
+        error_response = ErrorResponse.create(
+            code="INVALID_CURRENCY",
+            message=str(e),
+            details={"supported_currencies": currency_service.get_supported_currencies()},
+            request_id=request.request_id,
+        )
+        raise HTTPException(status_code=400, detail=error_response.error)
+
+    except Exception as e:
+        error_response = ErrorResponse.create(
+            code="CONVERSION_ERROR",
+            message="An unexpected error occurred during conversion",
+            details={"error": str(e)},
+            request_id=request.request_id,
+        )
+        raise HTTPException(status_code=500, detail=error_response.error)

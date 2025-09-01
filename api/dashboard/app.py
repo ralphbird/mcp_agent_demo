@@ -1,12 +1,14 @@
 """Streamlit dashboard for currency conversion API."""
 
+import os
+
 import pandas as pd
 import plotly.express as px
 import requests
 import streamlit as st
 
 # API Configuration
-API_BASE_URL = "http://localhost:8000"
+API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
 
 
 def get_current_rates():
@@ -39,7 +41,7 @@ def convert_currency(amount, from_currency, to_currency):
 def check_api_health():
     """Check if the API is healthy."""
     try:
-        response = requests.get(f"{API_BASE_URL}/health")
+        response = requests.get(f"{API_BASE_URL}/health", timeout=10)
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException:

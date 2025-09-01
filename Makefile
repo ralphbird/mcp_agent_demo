@@ -1,8 +1,11 @@
-.PHONY: help install test lint format type-check quality dev run dashboard clean test-quick markdownlint install-markdownlint install-precommit
+.PHONY: help setup install test lint format type-check quality dev run dashboard clean test-quick markdownlint install-markdownlint install-precommit demo-data clean-demo-data
 
 # Default target
 help:
 	@echo "Available commands:"
+	@echo ""
+	@echo "🚀 Quick Setup:"
+	@echo "  setup             - Complete environment setup: install deps + clean + generate demo data"
 	@echo ""
 	@echo "Development:"
 	@echo "  install           - Install dependencies for API service"
@@ -22,49 +25,86 @@ help:
 	@echo "  quality           - Run all quality checks (format, lint, type-check, markdownlint)"
 	@echo "  check             - Run quality checks + tests (full validation)"
 	@echo ""
+	@echo "Data & Database:"
+	@echo "  demo-data         - Generate demo historical exchange rate data"
+	@echo "  clean-demo-data   - Clean database and regenerate demo data"
+	@echo ""
 	@echo "Utilities:"
 	@echo "  clean             - Clean up temporary files and databases"
 
+# Complete environment setup
+setup:
+	@echo "🚀 Setting up complete development environment..."
+	@echo ""
+	@echo "📦 Step 1: Installing dependencies..."
+	poetry install
+	@echo "✅ Dependencies installed"
+	@echo ""
+	@echo "🧹 Step 2: Cleaning up temporary files and databases..."
+	find . -type f -name "*.pyc" -delete
+	find . -type d -name "__pycache__" -delete
+	find . -type d -name ".pytest_cache" -delete
+	find . -type f -name "*.db" -delete
+	find . -type f -name "test_*.db" -delete
+	rm -rf .coverage htmlcov/ .coverage.*
+	@echo "✅ Cleanup completed"
+	@echo ""
+	@echo "📊 Step 3: Generating demo historical data (30 days)..."
+	poetry run python scripts/clean_and_regenerate.py
+	@echo "✅ Demo data generated"
+	@echo ""
+	@echo "🧪 Step 4: Running quick tests to verify setup..."
+	poetry run pytest api/tests/ -x -q
+	@echo "✅ Tests passed"
+	@echo ""
+	@echo "🎉 Complete setup finished!"
+	@echo ""
+	@echo "🚀 Ready to start development:"
+	@echo "   make dev      # Start API server (http://localhost:8000)"
+	@echo "   make dashboard # Start dashboard (http://localhost:8501) [in another terminal]"
+	@echo "   make test     # Run full test suite"
+	@echo "   make quality  # Run code quality checks"
+
 # Installation
 install:
-	@echo "Installing API dependencies..."
-	cd api && poetry install
+	@echo "Installing dependencies..."
+	poetry install
 
 # Run commands
 run:
 	@echo "Starting Currency Conversion API server..."
-	cd api && poetry run python -m currency_app.main
+	poetry run python -m currency_app.main
 
 dev:
 	@echo "Starting Currency Conversion API server in development mode..."
-	cd api && poetry run uvicorn currency_app.main:app --host 0.0.0.0 --port 8000 --reload
+	poetry run uvicorn currency_app.main:app --host 0.0.0.0 --port 8000 --reload
 
 dashboard:
 	@echo "Starting Streamlit dashboard..."
 	@echo "Make sure the API server is running first (make dev in another terminal)"
-	cd api && poetry run streamlit run dashboard/app.py
+	poetry run streamlit run api/dashboard/app.py
 
 # Testing
 test:
 	@echo "Running API tests with coverage..."
-	cd api && poetry run pytest -v --cov=currency_app --cov-report=term-missing --cov-report=html
+	poetry run pytest api/tests/ -v --cov=currency_app --cov-report=term-missing --cov-report=html
 
 test-quick:
 	@echo "Running API tests (quick)..."
-	cd api && poetry run pytest
+	poetry run pytest api/tests/
 
 # Code quality
 format:
 	@echo "Formatting API code..."
-	cd api && poetry run ruff format .
+	poetry run ruff format api/
 
 lint:
 	@echo "Linting API code..."
-	cd api && poetry run ruff check --fix .
+	poetry run ruff check --fix api/
 
 type-check:
 	@echo "Type checking API code..."
-	cd api && poetry run pyright
+	poetry run pyright api/
 
 markdownlint:
 	@echo "Linting markdown files..."
@@ -81,7 +121,7 @@ clean:
 	find . -type d -name ".pytest_cache" -delete
 	find . -type f -name "*.db" -delete
 	find . -type f -name "test_*.db" -delete
-	cd api && rm -rf .coverage htmlcov/ .coverage.*
+	rm -rf .coverage htmlcov/ .coverage.*
 	@echo "Cleanup completed!"
 
 # Development workflow
@@ -106,19 +146,19 @@ install-precommit:
 # API-specific commands (for when we have multiple services)
 api-install:
 	@echo "Installing API dependencies..."
-	cd api && poetry install
+	poetry install
 
 api-test:
 	@echo "Running API tests..."
-	cd api && poetry run pytest -v
+	poetry run pytest api/tests/ -v
 
 api-run:
 	@echo "Starting API server..."
-	cd api && poetry run uvicorn currency_app.main:app --host 0.0.0.0 --port 8000
+	poetry run uvicorn currency_app.main:app --host 0.0.0.0 --port 8000
 
 api-dev:
 	@echo "Starting API server in development mode..."
-	cd api && poetry run uvicorn currency_app.main:app --host 0.0.0.0 --port 8000 --reload
+	poetry run uvicorn currency_app.main:app --host 0.0.0.0 --port 8000 --reload
 
 # Show API endpoints
 api-info:
@@ -131,4 +171,14 @@ api-info:
 # Quick health check
 health-check:
 	@echo "Checking API health..."
-	cd api && poetry run python -c "from currency_app.main import app; from fastapi.testclient import TestClient; client = TestClient(app); r = client.get('/health'); print('Health Status:', r.status_code, r.json() if r.status_code == 200 else 'FAILED')"
+	poetry run python -c "from currency_app.main import app; from fastapi.testclient import TestClient; client = TestClient(app); r = client.get('/health'); print('Health Status:', r.status_code, r.json() if r.status_code == 200 else 'FAILED')"
+
+# Generate demo data
+demo-data:
+	@echo "Generating demo historical exchange rate data..."
+	poetry run python scripts/generate_demo_data.py
+
+# Clean database and regenerate data
+clean-demo-data:
+	@echo "Cleaning database and regenerating demo data..."
+	poetry run python scripts/clean_and_regenerate.py

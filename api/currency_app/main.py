@@ -2,9 +2,10 @@
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 
 from currency_app.database import create_tables
+from currency_app.middleware.metrics import PrometheusMiddleware, get_metrics
 from currency_app.routers import conversion, health, rates
 
 
@@ -24,6 +25,9 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+
+# Add Prometheus metrics middleware
+app.add_middleware(PrometheusMiddleware)
 
 # Include routers
 app.include_router(health.router)
@@ -46,8 +50,20 @@ async def root() -> dict[str, str | dict[str, str]]:
         "endpoints": {
             "convert": "/api/v1/convert",
             "rates": "/api/v1/rates",
+            "rates_history": "/api/v1/rates/history",
+            "metrics": "/metrics",
         },
     }
+
+
+@app.get("/metrics")
+async def metrics() -> Response:
+    """Prometheus metrics endpoint.
+
+    Returns:
+        Prometheus metrics in text format
+    """
+    return Response(content=get_metrics(), media_type="text/plain")
 
 
 if __name__ == "__main__":

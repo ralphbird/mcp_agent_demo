@@ -101,3 +101,34 @@ class RatesResponse(BaseModel):
         },
         description="Additional metadata about the rates",
     )
+
+
+class HistoricalRateInfo(BaseModel):
+    """Historical exchange rate information with timestamp."""
+
+    currency: str = Field(..., description="Currency code")
+    rate: Decimal = Field(..., description="Exchange rate relative to base currency")
+    recorded_at: datetime = Field(..., description="When this rate was recorded")
+    base_currency: str = Field(default="USD", description="Base currency for this rate")
+    rate_source: str = Field(default="simulated", description="Source of the rate data")
+
+
+class RatesHistoryResponse(BaseModel):
+    """Response model for historical exchange rates."""
+
+    currency: str | None = Field(None, description="Specific currency (if filtered)")
+    rates: list[HistoricalRateInfo] = Field(..., description="List of historical rates")
+    period: dict[str, datetime] = Field(..., description="Time period covered")
+    total_records: int = Field(..., description="Total number of records returned")
+    base_currency: str = Field(default="USD", description="Base currency for all rates")
+    timestamp: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        description="When the history was retrieved",
+    )
+    metadata: dict[str, str] = Field(
+        default_factory=lambda: {
+            "rate_source": "simulated",
+            "data_interval": "hourly",
+        },
+        description="Additional metadata about the historical data",
+    )

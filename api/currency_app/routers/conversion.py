@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from currency_app.database import get_db
+from currency_app.middleware.metrics import record_currency_conversion, record_database_operation
 from currency_app.models.conversion import ConversionRequest, ConversionResponse, ErrorResponse
 from currency_app.models.database import ConversionHistory
 from currency_app.services.currency_service import CurrencyService, InvalidCurrencyError
@@ -34,6 +35,11 @@ async def convert_currency(
         # Perform conversion
         response = currency_service.convert_currency(request)
 
+        # Record successful conversion metrics
+        record_currency_conversion(
+            from_currency=response.from_currency, to_currency=response.to_currency, success=True
+        )
+
         # Store conversion in database
         conversion_record = ConversionHistory(
             conversion_id=str(response.conversion_id),
@@ -50,9 +56,17 @@ async def convert_currency(
         db.commit()
         db.refresh(conversion_record)
 
+        # Record successful database operation
+        record_database_operation(operation="insert", table="conversion_history", success=True)
+
         return response
 
     except InvalidCurrencyError as e:
+        # Record failed conversion metrics
+        record_currency_conversion(
+            from_currency=request.from_currency, to_currency=request.to_currency, success=False
+        )
+
         error_response = ErrorResponse.create(
             code="INVALID_CURRENCY",
             message=str(e),
@@ -64,6 +78,11 @@ async def convert_currency(
         raise HTTPException(status_code=400, detail=error_response.error)
 
     except Exception as e:
+        # Record failed conversion metrics
+        record_currency_conversion(
+            from_currency=request.from_currency, to_currency=request.to_currency, success=False
+        )
+
         error_response = ErrorResponse.create(
             code="CONVERSION_ERROR",
             message="An unexpected error occurred during conversion",

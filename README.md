@@ -7,7 +7,7 @@ debugging techniques, monitoring, and observability practices in a realistic mic
 
 **Phase 1: ✅ COMPLETE** - Core API Foundation
 **Phase 2: ✅ COMPLETE** - Extended API & Dashboard
-**Phase 3: 📋 Planned** - Full Observability & Advanced Features
+**Phase 3: ✅ COMPLETE** - Full Observability & Advanced Features
 
 ## 🚀 Features
 
@@ -27,6 +27,14 @@ debugging techniques, monitoring, and observability practices in a realistic mic
   - Exchange rates table and comparison charts
   - Currency strength visualizations
   - Summary statistics and analytics
+
+### Phase 3: Full Observability & Advanced Features
+
+- **Historical Rate Data**: Time-series storage and API for 30+ days of exchange rate history
+- **Prometheus Metrics**: HTTP requests, conversions, and database operations monitoring
+- **Advanced Dashboard**: Historical trend charts with time-series visualizations
+- **Production Monitoring**: `/metrics` endpoint ready for Prometheus/Grafana integration
+- **Demo Data Generation**: Realistic historical data with proper base currency handling (USD = 1.0)
 
 ### Supported Currencies
 
@@ -49,19 +57,32 @@ debugging techniques, monitoring, and observability practices in a realistic mic
 - Poetry
 - Node.js (for markdown linting)
 
-### Installation & Setup
+### ⚡ One-Command Setup
 
 ```bash
 # Clone and navigate to project
 cd mcp_agent_demo
 
-# Install API dependencies
+# Complete setup: install deps + clean + generate demo data + verify
+make setup
+```
+
+This single command will:
+
+- 📦 Install all Python dependencies
+- 🧹 Clean up any existing files/databases
+- 📊 Generate 30 days of realistic historical exchange rate data
+- 🧪 Run tests to verify everything works
+- ✅ USD rates correctly fixed at 1.000000 (base currency)
+
+### Manual Installation (Alternative)
+
+```bash
+# Install dependencies only
 make install
-# or: cd api && poetry install
 
 # Run the API server
 make dev
-# or: cd api && poetry run uvicorn currency_app.main:app --reload
 ```
 
 The API will be available at:
@@ -106,8 +127,10 @@ curl -X POST "http://localhost:8000/api/v1/convert" \
 
 - `POST /api/v1/convert` - Convert currency amounts
 - `GET /api/v1/rates` - Get current exchange rates for all supported currencies
+- `GET /api/v1/rates/history` - Get historical exchange rates with filtering options
 - `GET /health` - Basic health check
 - `GET /health/detailed` - Detailed system health with database connectivity
+- `GET /metrics` - Prometheus metrics for monitoring (Phase 3)
 - `GET /` - API information and links
 
 ### Example API Usage

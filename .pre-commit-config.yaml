@@ -10,23 +10,22 @@ repos:
       - id: check-merge-conflict
       - id: check-toml
 
-  # Python code quality tools (via Poetry)
   - repo: local
     hooks:
       - id: ruff-check
         name: ruff-check
         language: system
-        entry: bash -c 'cd api && poetry run ruff check --fix'
+        entry: poetry run ruff check --fix
         types_or: [python, pyi]
       - id: ruff-format
         name: ruff-format
         language: system
-        entry: bash -c 'cd api && poetry run ruff format'
+        entry: poetry run ruff format
         types_or: [python, pyi]
       - id: pyright
         name: pyright
         language: system
-        entry: bash -c 'cd api && poetry run pyright .'
+        entry: poetry run pyright
         types_or: [python, pyi]
       - id: markdownlint
         name: markdownlint

@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Currency conversion API for debugging practice"
 authors = ["rbird <rbird@pagerduty.com>"]
 readme = "README.md"
-packages = [{ include = "currency_app" }]
+packages = [{ include = "currency_app", from = "api" }]
 
 [tool.poetry.dependencies]
 python = "^3.12"
@@ -17,6 +17,7 @@ requests = "^2.32.0"
 plotly = "^5.24.0"
 pandas = "^2.2.0"
 uuid-utils = "^0.9.0"
+prometheus-client = "^0.21.0"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.12.11"

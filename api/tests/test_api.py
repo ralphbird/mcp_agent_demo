@@ -91,12 +91,12 @@ class TestHealthEndpoints:
         )
 
 
-class TestRootEndpoint:
-    """Test root endpoint."""
+class TestAPIEndpoint:
+    """Test API information endpoint."""
 
-    def test_root_endpoint(self, client):
-        """Test root endpoint returns API information."""
-        response = client.get("/")
+    def test_api_endpoint(self, client):
+        """Test API endpoint returns API information."""
+        response = client.get("/api")
 
         assert response.status_code == 200
         data = response.json()

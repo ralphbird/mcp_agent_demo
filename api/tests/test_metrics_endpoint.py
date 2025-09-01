@@ -188,9 +188,9 @@ class TestMetricsEndpoint:
         # Prometheus expects text/plain
         assert "text/plain" in response.headers["content-type"]
 
-    def test_metrics_endpoint_in_root_response(self, client):
-        """Test that metrics endpoint is advertised in root response."""
-        response = client.get("/")
+    def test_metrics_endpoint_in_api_response(self, client):
+        """Test that metrics endpoint is advertised in API response."""
+        response = client.get("/api")
         data = response.json()
 
         assert "endpoints" in data

@@ -1,4 +1,4 @@
-.PHONY: help setup install test lint format type-check quality dev run dashboard clean test-quick markdownlint install-markdownlint install-precommit demo-data clean-demo-data docker-build docker-up docker-down docker-logs docker-clean docker-monitor docker-setup docker-rebuild
+.PHONY: help setup install test lint format type-check quality dev run dashboard clean test-quick markdownlint install-markdownlint install-precommit demo-data clean-demo-data docker-build docker-up docker-down docker-logs docker-clean docker-monitor docker-setup docker-rebuild docker-restart
 
 # Default target
 help:
@@ -33,6 +33,7 @@ help:
 	@echo "  docker-build      - Build Docker images"
 	@echo "  docker-up         - Start all services with Docker Compose"
 	@echo "  docker-down       - Stop all Docker services"
+	@echo "  docker-rebuild    - Stop, rebuild, and restart all services in one command"
 	@echo "  docker-logs       - View Docker service logs"
 	@echo "  docker-clean      - Clean Docker images and volumes"
 	@echo "  docker-monitor    - Start services with monitoring (Prometheus + Grafana)"
@@ -253,5 +254,5 @@ docker-setup: docker-build
 docker-rebuild:
 	@echo "🐳 Rebuilding and restarting services..."
 	docker-compose down
-	docker-compose build --no-cache
+	docker-compose build
 	make docker-up

@@ -6,7 +6,7 @@ from fastapi import FastAPI, Response
 
 from currency_app.database import create_tables
 from currency_app.middleware.metrics import PrometheusMiddleware, get_metrics
-from currency_app.routers import conversion, health, rates
+from currency_app.routers import conversion, health, home, rates
 
 
 @asynccontextmanager
@@ -30,17 +30,18 @@ app = FastAPI(
 app.add_middleware(PrometheusMiddleware)
 
 # Include routers
+app.include_router(home.router)
 app.include_router(health.router)
 app.include_router(conversion.router)
 app.include_router(rates.router)
 
 
-@app.get("/")
-async def root() -> dict[str, str | dict[str, str]]:
-    """Root endpoint with basic API information.
+@app.get("/api")
+async def api_info() -> dict[str, str | dict[str, str]]:
+    """API information endpoint.
 
     Returns:
-        API information
+        API information and available endpoints
     """
     return {
         "message": "Currency Conversion API",

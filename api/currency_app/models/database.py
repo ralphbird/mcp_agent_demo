@@ -1,8 +1,8 @@
 """SQLAlchemy database models."""
 
 from datetime import datetime
-from uuid import uuid4
 
+import uuid_utils.compat as uuid
 from sqlalchemy import Column, DateTime, Integer, Numeric, String
 from sqlalchemy.orm import declarative_base
 
@@ -15,7 +15,9 @@ class ConversionHistory(Base):
     __tablename__ = "conversion_history"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    conversion_id = Column(String(36), unique=True, nullable=False, default=lambda: str(uuid4()))
+    conversion_id = Column(
+        String(36), unique=True, nullable=False, default=lambda: str(uuid.uuid7())
+    )
     request_id = Column(String(36), nullable=True)
     amount = Column(Numeric(15, 2), nullable=False)
     from_currency = Column(String(3), nullable=False)

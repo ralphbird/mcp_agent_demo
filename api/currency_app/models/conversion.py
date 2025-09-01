@@ -2,8 +2,9 @@
 
 from datetime import UTC, datetime
 from decimal import Decimal
-from uuid import UUID, uuid4
+from uuid import UUID
 
+import uuid_utils.compat as uuid
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -14,7 +15,7 @@ class ConversionRequest(BaseModel):
     from_currency: str = Field(..., min_length=3, max_length=3, description="Source currency code")
     to_currency: str = Field(..., min_length=3, max_length=3, description="Target currency code")
     request_id: UUID = Field(
-        default_factory=uuid4, description="Request ID (auto-generated if not provided)"
+        default_factory=uuid.uuid7, description="Request ID (auto-generated if not provided)"
     )
 
     @field_validator("from_currency", "to_currency")
@@ -27,7 +28,7 @@ class ConversionRequest(BaseModel):
 class ConversionResponse(BaseModel):
     """Response model for currency conversion."""
 
-    conversion_id: UUID = Field(default_factory=uuid4, description="Unique conversion ID")
+    conversion_id: UUID = Field(default_factory=uuid.uuid7, description="Unique conversion ID")
     request_id: UUID = Field(..., description="Request ID from input")
     amount: Decimal = Field(..., description="Original amount")
     from_currency: str = Field(..., description="Source currency code")

@@ -1,7 +1,8 @@
 """Tests for Pydantic models."""
 
 from datetime import UTC, datetime
-from uuid import uuid4
+
+import uuid_utils.compat as uuid
 
 from currency_app.models.conversion import ErrorResponse
 
@@ -35,7 +36,7 @@ class TestErrorResponse:
 
     def test_error_response_create_with_request_id(self):
         """Test ErrorResponse.create() with request_id parameter."""
-        request_id = uuid4()
+        request_id = uuid.uuid7()
 
         error_response = ErrorResponse.create(
             code="SERVER_ERROR", message="Internal server error", request_id=request_id
@@ -49,7 +50,7 @@ class TestErrorResponse:
     def test_error_response_create_with_all_parameters(self):
         """Test ErrorResponse.create() with all optional parameters."""
         details = {"currency": "INVALID", "supported": "USD,EUR,GBP"}
-        request_id = uuid4()
+        request_id = uuid.uuid7()
 
         error_response = ErrorResponse.create(
             code="INVALID_CURRENCY",

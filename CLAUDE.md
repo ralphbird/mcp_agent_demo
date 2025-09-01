@@ -15,11 +15,32 @@ Since no specific dependency management is configured yet, determine the appropr
 
 ## Common Commands
 
-No build, test, or lint commands are currently configured. When adding these, update this section with:
-- Build/package commands
-- Test execution (`pytest`, `python -m unittest`, etc.)
-- Linting/formatting (`ruff check`, `black`, `flake8`, etc.)
-- Type checking (`mypy`, `pyright`, etc.)
+### API Service (Phase 1 Complete)
+```bash
+# Navigate to API directory
+cd api
+
+# Install dependencies
+poetry install
+
+# Run the application
+poetry run python -m currency_app.main
+
+# Development with auto-reload
+poetry run uvicorn currency_app.main:app --reload
+
+# Run tests
+poetry run pytest
+poetry run pytest -v  # verbose output
+
+# Code quality
+poetry run ruff format .  # format code
+poetry run ruff check .   # lint code  
+poetry run pyright        # type checking
+
+# All quality checks
+poetry run ruff format . && poetry run ruff check . && poetry run pyright
+```
 
 ## Code Style
 

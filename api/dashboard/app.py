@@ -62,6 +62,55 @@ def get_rates_history(currency=None, days=7):
         return None
 
 
+def convert_rates_to_base(rates_data, target_base_currency):
+    """Convert rates from USD base to a different base currency.
+
+    Args:
+        rates_data: Historical rates data from API (all relative to USD)
+        target_base_currency: The currency to use as the new base
+
+    Returns:
+        Converted rates data with new base currency
+    """
+    if not rates_data or not rates_data.get("rates"):
+        return rates_data
+
+    # If target base is USD, no conversion needed
+    if target_base_currency == "USD":
+        return rates_data
+
+    # Get the base currency rate for each timestamp
+    target_rates = []
+
+    # Group rates by timestamp to find the base currency rate
+    rates_by_timestamp = {}
+    for rate in rates_data["rates"]:
+        timestamp = rate["recorded_at"]
+        if timestamp not in rates_by_timestamp:
+            rates_by_timestamp[timestamp] = {}
+        rates_by_timestamp[timestamp][rate["currency"]] = float(rate["rate"])
+
+    # Convert each rate relative to the new base currency
+    for timestamp, currencies in rates_by_timestamp.items():
+        if target_base_currency not in currencies:
+            continue  # Skip if base currency rate not available for this timestamp
+
+        base_rate = currencies[target_base_currency]
+
+        for currency, usd_rate in currencies.items():
+            if currency != target_base_currency:
+                # Convert from USD rate to new base currency rate
+                # If 1 USD = X target_base and 1 USD = Y currency
+                # Then 1 target_base = Y/X currency
+                converted_rate = usd_rate / base_rate if base_rate != 0 else 0
+
+                target_rates.append(
+                    {"currency": currency, "rate": converted_rate, "recorded_at": timestamp}
+                )
+
+    return {"rates": target_rates}
+
+
 def main():
     """Main Streamlit application."""
     st.set_page_config(
@@ -196,6 +245,12 @@ def show_historical_trends_page():
     """Show the historical trends page with time-series charts."""
     st.header("📈 Historical Exchange Rate Trends")
 
+    st.info(
+        "💡 **Base Currency Selection**: Choose your base currency to see how other currencies perform relative to it. "
+        "For example, selecting EUR as base shows how many USD, GBP, etc. you get for 1 EUR. "
+        "When you change the base currency, your selected currencies are preserved (with automatic swapping if needed)."
+    )
+
     # Get current rates for currency options
     rates_data = get_current_rates()
     if not rates_data:
@@ -204,18 +259,79 @@ def show_historical_trends_page():
 
     currencies = [rate["currency"] for rate in rates_data["rates"]]
 
+    # Initialize session state for currency management
+    if "previous_base_currency" not in st.session_state:
+        st.session_state.previous_base_currency = "USD"
+    if "previous_selected_currencies" not in st.session_state:
+        st.session_state.previous_selected_currencies = ["EUR", "GBP"]
+
     # Controls for historical data
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
 
     with col1:
+        base_currency = st.selectbox(
+            "Base currency",
+            currencies,
+            index=currencies.index("USD") if "USD" in currencies else 0,
+            help="Currency to use as the base for rate calculations",
+        )
+
+    # Handle base currency change logic
+    if base_currency != st.session_state.previous_base_currency:
+        old_base = st.session_state.previous_base_currency
+        old_selected = st.session_state.previous_selected_currencies.copy()
+
+        # Check if the new base currency was in the selected currencies
+        if base_currency in old_selected:
+            # Remove new base from selected and add old base
+            new_selected = [c for c in old_selected if c != base_currency]
+            if old_base not in new_selected:
+                new_selected.append(old_base)
+        else:
+            # Keep existing selected currencies (they'll be filtered below)
+            new_selected = old_selected.copy()
+
+        # Update session state
+        st.session_state.previous_base_currency = base_currency
+        st.session_state.previous_selected_currencies = new_selected
+
+    with col2:
+        # Filter out the base currency from target currencies
+        available_currencies = [c for c in currencies if c != base_currency]
+
+        # Determine default selection
+        if base_currency == st.session_state.previous_base_currency:
+            # No base currency change, use stored selection
+            current_default = [
+                c
+                for c in st.session_state.previous_selected_currencies
+                if c in available_currencies
+            ]
+        else:
+            # Base currency just changed, use the updated selection
+            current_default = [
+                c
+                for c in st.session_state.previous_selected_currencies
+                if c in available_currencies
+            ]
+
+        # If no valid defaults, use fallback
+        if not current_default:
+            current_default = (
+                available_currencies[:2] if len(available_currencies) >= 2 else available_currencies
+            )
+
         selected_currencies = st.multiselect(
             "Select currencies to view",
-            currencies,
-            default=["USD", "EUR", "GBP", "JPY"],
+            available_currencies,
+            default=current_default,
             help="Choose currencies to display in the time-series chart",
         )
 
-    with col2:
+        # Update session state with current selection
+        st.session_state.previous_selected_currencies = selected_currencies
+
+    with col3:
         days = st.selectbox(
             "Time period",
             [7, 14, 30, 60, 90],
@@ -233,7 +349,19 @@ def show_historical_trends_page():
     if len(selected_currencies) == 1:
         # Single currency detailed view
         currency = selected_currencies[0]
-        history_data = get_rates_history(currency=currency, days=days)
+
+        # Get historical data for all currencies to enable base currency conversion
+        if base_currency == "USD":
+            history_data = get_rates_history(currency=currency, days=days)
+        else:
+            # Need all currencies to convert to different base
+            history_data = get_rates_history(days=days)
+            history_data = convert_rates_to_base(history_data, base_currency)
+            # Filter to selected currency after conversion
+            if history_data and history_data.get("rates"):
+                history_data["rates"] = [
+                    r for r in history_data["rates"] if r["currency"] == currency
+                ]
 
         if history_data and history_data["rates"]:
             # Create DataFrame for plotting
@@ -257,8 +385,8 @@ def show_historical_trends_page():
                 df_history,
                 x="datetime",
                 y="rate",
-                title=f"{currency} Exchange Rate Trend (Last {days} days)",
-                labels={"rate": "Rate (relative to USD)", "datetime": "Date"},
+                title=f"{currency} Exchange Rate Trend vs {base_currency} (Last {days} days)",
+                labels={"rate": f"Rate (relative to {base_currency})", "datetime": "Date"},
                 line_shape="linear",
             )
             fig.update_layout(height=500)
@@ -289,18 +417,35 @@ def show_historical_trends_page():
         # Multiple currencies comparison
         all_rates_data = []
 
-        for currency in selected_currencies:
-            history_data = get_rates_history(currency=currency, days=days)
+        if base_currency == "USD":
+            # Fetch each currency individually when USD is base
+            for currency in selected_currencies:
+                history_data = get_rates_history(currency=currency, days=days)
+
+                if history_data and history_data["rates"]:
+                    for rate in history_data["rates"]:
+                        all_rates_data.append(
+                            {
+                                "datetime": pd.to_datetime(rate["recorded_at"]),
+                                "rate": float(rate["rate"]),
+                                "currency": rate["currency"],
+                            }
+                        )
+        else:
+            # Fetch all currencies and convert to new base currency
+            history_data = get_rates_history(days=days)
+            history_data = convert_rates_to_base(history_data, base_currency)
 
             if history_data and history_data["rates"]:
                 for rate in history_data["rates"]:
-                    all_rates_data.append(
-                        {
-                            "datetime": pd.to_datetime(rate["recorded_at"]),
-                            "rate": float(rate["rate"]),
-                            "currency": rate["currency"],
-                        }
-                    )
+                    if rate["currency"] in selected_currencies:
+                        all_rates_data.append(
+                            {
+                                "datetime": pd.to_datetime(rate["recorded_at"]),
+                                "rate": float(rate["rate"]),
+                                "currency": rate["currency"],
+                            }
+                        )
 
         if all_rates_data:
             df_all = pd.DataFrame(all_rates_data)
@@ -312,8 +457,8 @@ def show_historical_trends_page():
                 x="datetime",
                 y="rate",
                 color="currency",
-                title=f"Exchange Rate Trends Comparison (Last {days} days)",
-                labels={"rate": "Rate (relative to USD)", "datetime": "Date"},
+                title=f"Exchange Rate Trends vs {base_currency} (Last {days} days)",
+                labels={"rate": f"Rate (relative to {base_currency})", "datetime": "Date"},
                 line_shape="linear",
             )
             fig.update_layout(height=500)

@@ -76,7 +76,7 @@ class TestRatesHistoryService:
         assert added_record.base_currency == "USD"
         assert added_record.rate_source == "simulated"
 
-    @patch("currency_app.services.rates_history_service.random.uniform")
+    @patch("currency_app.services.rates_history_service.random.normalvariate")
     def test_generate_historical_data_for_demo(
         self, mock_random, rates_history_service, mock_db_session
     ):

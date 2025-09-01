@@ -69,9 +69,11 @@ class RatesHistoryService:
                     if currency == "USD":
                         varied_rate = Decimal("1.000000")
                     else:
-                        # Add random variation (±2% for most currencies, ±5% for volatile ones)
-                        volatility = 0.05 if currency in ["JPY", "CNY"] else 0.02
-                        variation = random.uniform(-volatility, volatility)
+                        # Add random variation using normal distribution centered on current rate
+                        # Standard deviation: 2% for most currencies, 5% for volatile ones
+                        volatility_std = 0.05 if currency in ["JPY", "CNY"] else 0.02
+                        # Generate normal distribution with mean=0, std=volatility_std
+                        variation = random.normalvariate(0, volatility_std)
                         varied_rate = base_rate * (Decimal("1") + Decimal(str(variation)))
 
                         # Round to appropriate precision

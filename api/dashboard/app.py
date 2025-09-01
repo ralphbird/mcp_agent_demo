@@ -171,7 +171,7 @@ def show_rates_page():
             "last_updated": "Last Updated",
         },
         hide_index=True,
-        use_container_width=True,
+        width="stretch",
     )
 
     # Rate comparison
@@ -195,7 +195,7 @@ def show_rates_page():
             labels={"rate": "Exchange Rate", "currency": "Currency"},
         )
         fig.update_layout(height=400)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
 
 def show_charts_page():
@@ -230,7 +230,7 @@ def show_charts_page():
                 color="rate",
                 color_continuous_scale="greens",
             )
-            st.plotly_chart(fig1, use_container_width=True)
+            st.plotly_chart(fig1, width="stretch")
 
     with col2:
         if not weaker_than_usd.empty:
@@ -243,7 +243,7 @@ def show_charts_page():
                 color="rate",
                 color_continuous_scale="reds",
             )
-            st.plotly_chart(fig2, use_container_width=True)
+            st.plotly_chart(fig2, width="stretch")
 
     # Pie chart of relative values
     st.subheader("Relative Currency Distribution")
@@ -257,7 +257,7 @@ def show_charts_page():
         names="currency",
         title="Relative Currency Values (Inverse Rates)",
     )
-    st.plotly_chart(fig3, use_container_width=True)
+    st.plotly_chart(fig3, width="stretch")
 
     # Summary statistics
     st.subheader("Summary Statistics")

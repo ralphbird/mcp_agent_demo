@@ -16,9 +16,8 @@ repos:
       - id: ruff-check
         name: ruff-check
         language: system
-        entry: bash -c 'cd api && poetry run ruff check'
+        entry: bash -c 'cd api && poetry run ruff check --fix'
         types_or: [python, pyi]
-        args: [--fix]
       - id: ruff-format
         name: ruff-format
         language: system

@@ -60,7 +60,7 @@ format:
 
 lint:
 	@echo "Linting API code..."
-	cd api && poetry run ruff check .
+	cd api && poetry run ruff check --fix .
 
 type-check:
 	@echo "Type checking API code..."

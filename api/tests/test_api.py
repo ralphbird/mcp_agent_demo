@@ -325,3 +325,156 @@ class TestRatesEndpoint:
         assert "base_currency" in data
         assert "timestamp" in data
         assert "metadata" in data
+
+    def test_get_rates_history_success(self, client):
+        """Test successful retrieval of historical exchange rates."""
+        # First populate some historical data using the test database
+        from currency_app.services.rates_history_service import RatesHistoryService
+
+        db = TestingSessionLocal()
+        try:
+            history_service = RatesHistoryService(db)
+            # Generate minimal demo data (1 day)
+            history_service.generate_historical_data_for_demo(days_back=1)
+        finally:
+            db.close()
+
+        # Test without filters
+        response = client.get("/api/v1/rates/history")
+
+        assert response.status_code == 200
+        data = response.json()
+
+        # Check response structure
+        assert "currency" in data
+        assert data["currency"] is None  # No currency filter
+        assert "rates" in data
+        assert "period" in data
+        assert "total_records" in data
+        assert "base_currency" in data
+        assert data["base_currency"] == "USD"
+        assert "timestamp" in data
+        assert "metadata" in data
+
+        # Check metadata
+        metadata = data["metadata"]
+        assert metadata["rate_source"] == "simulated"
+        assert metadata["data_interval"] == "hourly"
+
+        # Should have records for all currencies
+        assert len(data["rates"]) > 0
+        assert data["total_records"] > 0
+
+    def test_get_rates_history_with_currency_filter(self, client):
+        """Test historical rates retrieval with currency filter."""
+        # First populate some historical data using the test database
+        from currency_app.services.rates_history_service import RatesHistoryService
+
+        db = TestingSessionLocal()
+        try:
+            history_service = RatesHistoryService(db)
+            history_service.generate_historical_data_for_demo(days_back=1)
+        finally:
+            db.close()
+
+        # Test with EUR filter
+        response = client.get("/api/v1/rates/history?currency=EUR")
+
+        assert response.status_code == 200
+        data = response.json()
+
+        assert data["currency"] == "EUR"
+        assert len(data["rates"]) > 0
+
+        # All rates should be for EUR
+        for rate in data["rates"]:
+            assert rate["currency"] == "EUR"
+            assert rate["base_currency"] == "USD"
+            assert "rate" in rate
+            assert "recorded_at" in rate
+            assert "rate_source" in rate
+
+    def test_get_rates_history_with_usd_filter(self, client):
+        """Test historical rates for USD shows all 1.000000."""
+        # First populate some historical data using the test database
+        from currency_app.services.rates_history_service import RatesHistoryService
+
+        db = TestingSessionLocal()
+        try:
+            history_service = RatesHistoryService(db)
+            history_service.generate_historical_data_for_demo(days_back=1)
+        finally:
+            db.close()
+
+        # Test with USD filter
+        response = client.get("/api/v1/rates/history?currency=USD")
+
+        assert response.status_code == 200
+        data = response.json()
+
+        assert data["currency"] == "USD"
+        assert len(data["rates"]) > 0
+
+        # All USD rates should be exactly 1.000000
+        for rate in data["rates"]:
+            assert rate["currency"] == "USD"
+            assert float(rate["rate"]) == 1.000000
+
+    def test_get_rates_history_with_parameters(self, client):
+        """Test historical rates with days and limit parameters."""
+        # First populate some historical data using the test database
+        from currency_app.services.rates_history_service import RatesHistoryService
+
+        db = TestingSessionLocal()
+        try:
+            history_service = RatesHistoryService(db)
+            history_service.generate_historical_data_for_demo(days_back=2)
+        finally:
+            db.close()
+
+        # Test with specific parameters
+        response = client.get("/api/v1/rates/history?currency=EUR&days=1&limit=5")
+
+        assert response.status_code == 200
+        data = response.json()
+
+        assert data["currency"] == "EUR"
+        assert len(data["rates"]) <= 5  # Respects limit
+        assert data["total_records"] <= 5
+
+    def test_get_rates_history_invalid_currency(self, client):
+        """Test historical rates with invalid currency."""
+        response = client.get("/api/v1/rates/history?currency=INVALID")
+
+        assert response.status_code == 500  # Should trigger validation error
+        data = response.json()
+        assert "detail" in data
+        assert data["detail"]["code"] == "HISTORY_ERROR"
+
+    def test_get_rates_history_parameter_validation(self, client):
+        """Test historical rates parameter validation."""
+        # Test invalid days parameter
+        response = client.get("/api/v1/rates/history?days=0")
+        assert response.status_code == 422  # Validation error
+
+        response = client.get("/api/v1/rates/history?days=500")  # > 365
+        assert response.status_code == 422  # Validation error
+
+        # Test invalid limit parameter
+        response = client.get("/api/v1/rates/history?limit=0")
+        assert response.status_code == 422  # Validation error
+
+        response = client.get("/api/v1/rates/history?limit=50000")  # > 10000
+        assert response.status_code == 422  # Validation error
+
+    def test_get_rates_history_empty_data(self, client):
+        """Test historical rates with no data."""
+        response = client.get("/api/v1/rates/history")
+
+        assert response.status_code == 200
+        data = response.json()
+
+        # Should return empty results
+        assert len(data["rates"]) == 0
+        assert data["total_records"] == 0
+        assert "period" in data

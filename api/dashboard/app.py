@@ -7,6 +7,9 @@ import plotly.express as px
 import requests
 import streamlit as st
 
+# Import comprehensive defaults
+from load_tester.models.load_test import _get_all_amounts, _get_all_currency_pairs
+
 # API Configuration
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
 LOAD_TESTER_URL = os.getenv("LOAD_TESTER_URL", "http://localhost:8001")
@@ -748,29 +751,18 @@ def show_load_testing_page():
 
                 ramp_currency_pairs = st.multiselect(
                     "Currency Pairs",
-                    [
-                        "USD_EUR",
-                        "USD_GBP",
-                        "EUR_GBP",
-                        "USD_JPY",
-                        "USD_CAD",
-                        "USD_AUD",
-                        "USD_CHF",
-                        "USD_CNY",
-                        "USD_SEK",
-                        "USD_NZD",
-                    ],
-                    default=current_config.get("currency_pairs", ["USD_EUR", "USD_GBP"]),
-                    help="Update currency pairs to test",
+                    _get_all_currency_pairs(),
+                    default=current_config.get("currency_pairs", _get_all_currency_pairs()[:5]),
+                    help="Update currency pairs to test (showing all available pairs)",
                     key="ramp_currency_pairs",
                 )
 
             with col2:
                 ramp_amounts = st.multiselect(
                     "Test Amounts",
-                    [10.0, 50.0, 100.0, 250.0, 500.0, 1000.0, 2500.0, 5000.0],
-                    default=current_config.get("amounts", [100.0, 500.0, 1000.0]),
-                    help="Update transaction amounts to test",
+                    _get_all_amounts(),
+                    default=current_config.get("amounts", _get_all_amounts()[:5]),
+                    help="Update transaction amounts to test (showing all available amounts)",
                     key="ramp_amounts",
                 )
 
@@ -873,28 +865,17 @@ def show_load_testing_page():
 
                 currency_pairs = st.multiselect(
                     "Currency Pairs",
-                    [
-                        "USD_EUR",
-                        "USD_GBP",
-                        "EUR_GBP",
-                        "USD_JPY",
-                        "USD_CAD",
-                        "USD_AUD",
-                        "USD_CHF",
-                        "USD_CNY",
-                        "USD_SEK",
-                        "USD_NZD",
-                    ],
-                    default=["USD_EUR", "USD_GBP"],
-                    help="Currency pairs to test",
+                    _get_all_currency_pairs(),
+                    default=_get_all_currency_pairs()[:5],
+                    help="Currency pairs to test (showing all available pairs)",
                 )
 
             with col2:
                 amounts = st.multiselect(
                     "Test Amounts",
-                    [10.0, 50.0, 100.0, 250.0, 500.0, 1000.0, 2500.0, 5000.0],
-                    default=[100.0, 500.0, 1000.0],
-                    help="Transaction amounts to test",
+                    _get_all_amounts(),
+                    default=_get_all_amounts()[:5],
+                    help="Transaction amounts to test (showing all available amounts)",
                 )
 
             if currency_pairs and amounts and st.button("🚀 Start Custom Test", type="primary"):

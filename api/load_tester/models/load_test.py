@@ -6,6 +6,45 @@ from enum import Enum
 from pydantic import BaseModel, Field
 
 
+def _get_all_currency_pairs() -> list[str]:
+    """Get all available currency pairs from currency patterns.
+
+    Returns:
+        List of all currency pairs in format "FROM_TO"
+    """
+    # Import here to avoid circular imports
+    from load_tester.services.currency_patterns import CurrencyPatterns
+
+    patterns = CurrencyPatterns()
+    pairs = []
+
+    for from_curr, to_curr in patterns.CURRENCY_PAIR_WEIGHTS:
+        pair_str = f"{from_curr}_{to_curr}"
+        if pair_str not in pairs:
+            pairs.append(pair_str)
+
+    return sorted(pairs)
+
+
+def _get_all_amounts() -> list[float]:
+    """Get all available transaction amounts from currency patterns.
+
+    Returns:
+        List of all unique amounts across all currencies
+    """
+    # Import here to avoid circular imports
+    from load_tester.services.currency_patterns import CurrencyPatterns
+
+    patterns = CurrencyPatterns()
+    amounts = set()
+
+    for currency_amounts in patterns.CURRENCY_AMOUNTS.values():
+        for amount in currency_amounts:
+            amounts.add(float(amount))
+
+    return sorted(amounts)
+
+
 class LoadTestStatus(str, Enum):
     """Load test execution status."""
 
@@ -27,12 +66,12 @@ class LoadTestConfig(BaseModel):
         description="Number of requests per second to generate",
     )
     currency_pairs: list[str] = Field(
-        default_factory=lambda: ["USD_EUR", "USD_GBP", "EUR_GBP", "USD_CAD", "USD_JPY"],
-        description="Currency pairs to test",
+        default_factory=_get_all_currency_pairs,
+        description="Currency pairs to test (defaults to all available pairs)",
     )
     amounts: list[float] = Field(
-        default_factory=lambda: [100.0, 250.0, 500.0, 1000.0, 2500.0],
-        description="Transaction amounts to test",
+        default_factory=_get_all_amounts,
+        description="Transaction amounts to test (defaults to all available amounts)",
     )
 
 

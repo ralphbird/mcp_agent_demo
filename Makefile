@@ -15,7 +15,7 @@ help:
 	@echo "  dev               - Run API server in development mode with auto-reload"
 	@echo "  dashboard         - Run the Streamlit dashboard (requires API server running)"
 	@echo "  load-tester       - Run the Load Tester service (requires API server running)"
-	@echo "  load-test-quick   - Run a quick load test (default settings)"
+	@echo "  load-test-quick   - Run a quick load test (all currency pairs and amounts)"
 	@echo "  load-test-status  - Check current load test status"
 	@echo "  load-test-light   - Run light load test scenario"
 	@echo "  load-test-moderate - Run moderate load test scenario"
@@ -111,8 +111,8 @@ load-tester:
 	poetry run python -m load_tester.main
 
 load-test-quick:
-	@echo "Running quick load test..."
-	@echo "Starting default load test (1 req/s for 30 seconds)..."
+	@echo "Running comprehensive load test..."
+	@echo "Starting comprehensive load test (1 req/s for 30 seconds with all currency pairs and amounts)..."
 	curl -X POST "http://localhost:8001/api/load-test/start" \
 		-H "Content-Type: application/json" \
 		-d '{"config": {"requests_per_second": 1.0}}' && \
@@ -309,11 +309,11 @@ docker-monitor:
 	@echo "🛑 Stop services: make docker-down"
 
 docker-load-test:
-	@echo "🔥 Running load test against Docker stack..."
-	@echo "Starting moderate load test (5 req/s for 60 seconds)..."
+	@echo "🔥 Running comprehensive load test against Docker stack..."
+	@echo "Starting comprehensive load test (5 req/s for 60 seconds with all currency pairs and amounts)..."
 	curl -X POST "http://localhost:8001/api/load-test/start" \
 		-H "Content-Type: application/json" \
-		-d '{"config": {"requests_per_second": 5.0, "currency_pairs": ["USD_EUR", "USD_GBP", "EUR_GBP"], "amounts": [100.0, 500.0, 1000.0]}}' && \
+		-d '{"config": {"requests_per_second": 5.0}}' && \
 	@echo "Load test started! Monitoring for 60 seconds..." && \
 	sleep 60 && \
 	@echo "Stopping load test and showing results..." && \

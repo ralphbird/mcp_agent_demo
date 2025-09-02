@@ -61,7 +61,6 @@ class LoadTestManager:
             f"Starting load test with {config.requests_per_second} RPS",
             extra={
                 "requests_per_second": config.requests_per_second,
-                "worker_count": len(config.currency_pairs) if config.currency_pairs else 0,
                 "currency_pairs_count": len(config.currency_pairs) if config.currency_pairs else 0,
                 "amounts_count": len(config.amounts) if config.amounts else 0,
             },

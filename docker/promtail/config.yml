@@ -46,7 +46,6 @@ scrape_configs:
           - localhost
         labels:
           job: currency-api
-          service: currency-api
           __path__: /var/lib/docker/containers/*/*log
 
     pipeline_stages:
@@ -100,7 +99,6 @@ scrape_configs:
           - localhost
         labels:
           job: load-tester
-          service: load-tester
           __path__: /var/lib/docker/containers/*/*log
 
     pipeline_stages:

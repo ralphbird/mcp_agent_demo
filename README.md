@@ -1,21 +1,64 @@
 # Currency Conversion API
 
 A production-ready FastAPI-based currency conversion system with real-time exchange rates,
-historical data tracking, interactive dashboard, and comprehensive monitoring capabilities.
+interactive dashboard, and comprehensive monitoring capabilities.
 
 ## ✨ What This System Provides
 
-**Currency Conversion Service**: Convert between 10 major currencies with simulated real-time rates
-and complete transaction history.
+🏦 **Currency Conversion Service**: Convert between 10 major currencies with simulated
+real-time rates
+📊 **Interactive Web Dashboard**: Streamlit-based interface for currency conversion and
+rate visualization
+🔥 **Load Testing Platform**: Built-in load testing service to validate API performance
+📈 **Production Monitoring**: Prometheus metrics with Grafana dashboards and distributed tracing
 
-**Interactive Web Dashboard**: Streamlit-based interface for currency conversion, rate visualization,
-and historical trend analysis.
+## 🚀 Quick Start (Docker - Recommended)
 
-**Load Testing Platform**: Built-in load testing service to validate API performance under various
-traffic conditions.
+### Prerequisites
 
-**Production Monitoring**: Prometheus metrics integration with optional Grafana dashboards for
-comprehensive observability.
+- Docker & Docker Compose
+- That's it! No other dependencies required
+
+### ⚡ One-Command Setup
+
+```bash
+# Clone the repository
+git clone <repository-url>
+cd mcp_agent_demo
+
+# Start everything with one command
+make
+```
+
+This will start all services and you'll see:
+
+```text
+🚀 Available at:
+   💰 API: http://localhost:8000
+   📊 Dashboard: http://localhost:8501
+   🔥 Load Tester: http://localhost:8001
+   📈 Prometheus: http://localhost:9090
+   📉 Grafana: http://localhost:3000 (admin/admin)
+   🔍 Jaeger: http://localhost:16686
+```
+
+### 🎯 What You Get Out of the Box
+
+- **Currency API** at <http://localhost:8000> with interactive docs at `/docs`
+- **Web Dashboard** at <http://localhost:8501> for conversions and charts
+- **Load Tester** at <http://localhost:8001> for performance testing
+- **Monitoring Stack** with Prometheus, Grafana, and Jaeger for observability
+- **30+ days of demo data** automatically generated
+
+### 🐳 Docker Commands
+
+```bash
+make up       # Start all services
+make down     # Stop all services
+make logs     # View service logs
+make rebuild  # Rebuild and restart everything
+make clean    # Clean all Docker resources
+```
 
 ## 🚀 Core Features
 
@@ -54,182 +97,113 @@ comprehensive observability.
 
 - **Distributed Tracing**: OpenTelemetry integration with Jaeger for end-to-end request tracing
 - **Metrics Endpoint**: `/metrics` for Prometheus scraping
-- **Optional Grafana**: Pre-configured dashboards for performance monitoring
+- **Pre-configured Grafana**: Dashboards for performance monitoring
 - **Request Correlation**: UUID-based tracking with trace context for debugging and analytics
 - **Database Monitoring**: Connection health and query performance tracking
 - **Structured Logging**: JSON logs with trace correlation and business context
 
-## 🛠️ Quick Start
+## 🛠️ Alternative Setup (Local Development)
 
-### Prerequisites
+If you prefer to run without Docker:
 
-#### Option 1: Local Development**
+### Local Development Prerequisites
 
 - Python 3.12+
 - Poetry
 - Node.js (for markdown linting)
 
-#### Option 2: Docker Deployment**
-
-- Docker & Docker Compose
-- No other dependencies required!
-
-### ⚡ One-Command Setup
+### Setup
 
 ```bash
-# Clone and navigate to project
-cd mcp_agent_demo
+# Install dependencies
+poetry install
 
-# Complete setup: install deps + clean + generate demo data + verify
-make setup
-```
-
-This single command will:
-
-- 📦 Install all Python dependencies
-- 🧹 Clean up any existing files/databases
-- 📊 Generate 30 days of realistic historical exchange rate data
-- 🧪 Run tests to verify everything works
-- ✅ USD rates correctly fixed at 1.000000 (base currency)
-
-### Manual Installation (Alternative)
-
-```bash
-# Install dependencies only
-make install
+# Generate demo data
+poetry run python scripts/generate_demo_data.py
 
 # Run the API server
-make dev
+poetry run uvicorn currency_app.main:app --reload
+
+# In another terminal, run the dashboard
+poetry run streamlit run dashboard/app.py
 ```
 
 The API will be available at:
 
 - **Server**: <http://localhost:8000>
 - **Documentation**: <http://localhost:8000/docs>
-- **Health Check**: <http://localhost:8000/health>
-
-### Dashboard Setup
-
-```bash
-# Start the API first (in one terminal)
-make dev
-
-# Run the Streamlit dashboard (in another terminal)
-make dashboard
-# or: poetry run streamlit run dashboard/app.py
-```
-
-The dashboard will be available at:
-
 - **Dashboard**: <http://localhost:8501>
 
-### 🐳 Docker Deployment (Recommended)
+## 🧪 Quick Test & Verification
 
-The easiest way to run the complete application stack:
-
-```bash
-# Build and start all services
-make docker-up
-
-# Or manually:
-docker-compose up -d
-```
-
-This will start:
-
-- **API**: <http://localhost:8000> (FastAPI with automatic demo data)
-- **Dashboard**: <http://localhost:8501> (Streamlit interface)
-- **Metrics**: <http://localhost:8000/metrics> (Prometheus metrics)
-
-#### Docker Commands
+Once your services are running, you can quickly test the system:
 
 ```bash
-# Complete Docker setup (build + start + demo data)
-make docker-setup
-
-# View service logs
-make docker-logs
-
-# Stop all services
-make docker-down
-
-# Clean everything (images, volumes, containers)
-make docker-clean
-
-# Start with monitoring stack (Prometheus + Grafana)
-make docker-monitor
-```
-
-#### With Monitoring Stack
-
-```bash
-# Start with Prometheus & Grafana
-make docker-monitor
-```
-
-Additional services available:
-
-- **Prometheus**: <http://localhost:9090> (Metrics collection)
-- **Grafana**: <http://localhost:3000> (admin/admin - Dashboards)
-- **Jaeger**: <http://localhost:16686> (Distributed tracing UI)
-
-## 🔍 Distributed Tracing
-
-The system includes comprehensive distributed tracing with OpenTelemetry and Jaeger:
-
-### Tracing Features
-
-- **End-to-End Request Tracing**: Track requests across all services and components
-- **Business Logic Spans**: Detailed spans for currency conversions, rate lookups, and validations
-- **Database Query Tracing**: Automatic SQLAlchemy instrumentation for database operations
-- **HTTP Request Tracing**: FastAPI auto-instrumentation for all HTTP endpoints
-- **Cross-Service Correlation**: Trace propagation between currency API and load tester
-- **Error Context**: Rich error information with trace correlation
-
-### Accessing Traces
-
-When running with Docker:
-
-```bash
-# Start with full monitoring stack
-make docker-monitor
-
-# Access Jaeger UI
-open http://localhost:16686
-```
-
-View traces by:
-
-1. **Service**: Select `currency-api` or `load-tester`
-2. **Operation**: Filter by specific endpoints or operations
-3. **Tags**: Search by currency pairs, amounts, or error types
-4. **Time Range**: Analyze performance over time
-
-### Trace Data
-
-Each trace includes:
-
-- **HTTP Layer**: Request/response timing, status codes, endpoints
-- **Business Logic**: Currency validation, exchange rate calculations, conversions
-- **Database**: Query execution times, connection pooling
-- **Errors**: Exception details, stack traces, business context
-
-### Quick Test
-
-```bash
-# Run all tests
-make test
-
 # Quick health check
-make health-check
+curl http://localhost:8000/health
 
 # Currency conversion example
 curl -X POST "http://localhost:8000/api/v1/convert" \
   -H "Content-Type: application/json" \
   -d '{"amount": 100.00, "from_currency": "USD", "to_currency": "EUR"}'
+
+# Get current exchange rates
+curl http://localhost:8000/api/v1/rates
 ```
 
-## 📖 API Endpoints
+## 🔍 Distributed Tracing
+
+The system includes comprehensive distributed tracing with OpenTelemetry and Jaeger.
+When running with Docker, access the Jaeger UI at <http://localhost:16686> to view:
+
+- **End-to-End Request Tracing**: Track requests across all services
+- **Business Logic Spans**: Currency conversions, rate lookups, and validations
+- **Database Query Tracing**: SQLAlchemy instrumentation for database operations
+- **HTTP Request Tracing**: FastAPI auto-instrumentation for all endpoints
+- **Error Context**: Rich error information with trace correlation
+
+## �️ Development & Testing
+
+### Docker-based Development
+
+For development with auto-reload and debugging:
+
+```bash
+# Start with development mode (mounts source code)
+docker-compose up --build
+
+# View logs for debugging
+make logs
+
+# Run tests
+make test
+
+# Code quality checks
+make quality
+```
+
+### Local Development Commands
+
+If running locally without Docker:
+
+```bash
+# Install and setup
+poetry install
+poetry run python scripts/generate_demo_data.py
+
+# Development server with auto-reload
+poetry run uvicorn currency_app.main:app --reload
+
+# Run tests
+poetry run pytest tests/ -v
+
+# Code quality
+poetry run ruff format .
+poetry run ruff check .
+poetry run pyright
+```
+
+## �📖 API Endpoints
 
 ### Core Endpoints
 
@@ -238,7 +212,7 @@ curl -X POST "http://localhost:8000/api/v1/convert" \
 - `GET /api/v1/rates/history` - Get historical exchange rates with filtering options
 - `GET /health` - Basic health check
 - `GET /health/detailed` - Detailed system health with database connectivity
-- `GET /metrics` - Prometheus metrics for monitoring (Phase 3)
+- `GET /metrics` - Prometheus metrics for monitoring
 - `GET /` - API information and links
 
 ### Example API Usage
@@ -294,121 +268,40 @@ Response:
 }
 ```
 
-## 🛠️ Development
-
-### Make Commands
-
-```bash
-make help          # Show all available commands
-make install       # Install dependencies
-make dev           # Run development server with auto-reload
-make dashboard     # Run Streamlit dashboard (requires API server running)
-make test          # Run all tests with verbose output
-make test-quick    # Run tests with minimal output
-make quality       # Run formatting, linting, type checking, and markdown linting
-make markdownlint  # Lint markdown files
-make clean         # Clean up temporary files and databases
-make check         # Run quality checks + tests (full validation)
-```
-
-### Manual Commands
-
-```bash
-# Run applications
-poetry run python -m currency_app.main              # Currency API
-poetry run uvicorn currency_app.main:app --reload   # Currency API with auto-reload
-poetry run streamlit run dashboard/app.py           # Dashboard
-poetry run python -m load_tester.main               # Load tester
-
-# Testing
-poetry run pytest -v                                # All tests
-poetry run pytest tests/currency_app/ -v            # Currency app tests
-poetry run pytest tests/load_tester/ -v             # Load tester tests
-
-# Code quality
-poetry run ruff format .                            # Format code
-poetry run ruff check .                             # Lint code
-poetry run pyright                                  # Type checking
-```
-
 ## 📁 Project Structure
 
 ```text
 mcp_agent_demo/
-├── currency_app/               # Currency conversion API service
-│   ├── models/                # Pydantic & SQLAlchemy models
-│   ├── routers/               # FastAPI route handlers
-│   ├── services/              # Business logic
-│   ├── middleware/            # Prometheus metrics middleware
-│   ├── database.py            # Database configuration
-│   └── main.py                # FastAPI application
-├── dashboard/                  # Streamlit web dashboard
-│   └── app.py                 # Interactive dashboard application
+├── currency_app/              # Currency conversion API service
+├── dashboard/                 # Streamlit web dashboard
 ├── load_tester/               # Load testing service
-│   ├── models/                # Load test configuration models
-│   ├── services/              # Load testing logic
-│   ├── routers/               # Load test API endpoints
-│   └── main.py                # Load tester FastAPI application
-├── tests/                     # Test suite organized by module
-│   ├── currency_app/          # Currency API tests
-│   ├── load_tester/           # Load tester tests
-│   └── dashboard/             # Dashboard tests
-├── pyproject.toml             # Poetry configuration
-├── Makefile                   # Development workflow commands
-├── CLAUDE.md                  # Claude Code usage instructions
+├── docker-compose.yml         # Docker orchestration
+├── Dockerfile                 # Multi-stage Docker build
+├── Makefile                   # Development commands
 └── README.md                  # This documentation
 ```
 
 ## 🧪 Testing
 
-The project includes a comprehensive test suite with 228 tests organized by module:
-
-- **Currency App Tests**: API endpoints, service logic, database operations, and metrics
-- **Load Tester Tests**: Load testing manager functionality and configuration
-- **Dashboard Tests**: (Future dashboard-specific tests)
-- **Coverage Areas**: Unit tests, integration tests, edge cases, and error scenarios
+The project includes comprehensive tests with 228+ test cases:
 
 ```bash
+# Run all tests
+make test
+
 # Run specific test modules
 poetry run pytest tests/currency_app/ -v        # Currency conversion tests
-poetry run pytest tests/load_tester/ -v        # Load testing tests
-poetry run pytest tests/currency_app/test_api.py -v  # API integration tests
-poetry run pytest tests/currency_app/test_currency_service.py -v  # Service unit tests
+poetry run pytest tests/load_tester/ -v         # Load testing tests
 ```
-
-## 🏗️ Architecture
-
-### Technology Stack
-
-- **FastAPI**: Modern async web framework with comprehensive API endpoints
-- **SQLAlchemy**: Database ORM with SQLite backend for development
-- **Pydantic**: Data validation, serialization, and settings management
-- **Streamlit**: Interactive dashboard for data visualization and analytics
-- **Plotly**: Advanced charting and visualization components
-- **Pandas**: Data manipulation for dashboard analytics
-- **Prometheus**: Metrics collection and monitoring integration
-- **Poetry**: Dependency management and packaging
-- **Docker**: Containerization with multi-stage builds
-- **Ruff + Pyright**: Code quality, formatting, linting, and type checking
-
-### Key Design Principles
-
-- **Financial Precision**: Decimal-based calculations with banker's rounding for currency accuracy
-- **Request Tracing**: Complete audit trail with UUID tracking for all transactions
-- **Structured Validation**: Comprehensive input validation with detailed error responses
-- **Separation of Concerns**: Clean architecture with separate service, router, and model layers
-- **Observability First**: Built-in metrics, health checks, and monitoring capabilities
-- **Container Ready**: Production deployment via Docker with persistent data storage
 
 ## 🤝 Contributing
 
-This is a production-ready demo project showcasing modern development practices. The codebase follows:
+This project follows modern development practices:
 
-- **Code Quality**: Ruff formatting + linting, Pyright type checking, Markdownlint documentation standards
-- **Testing**: Comprehensive test coverage with 228+ tests across all modules
-- **Documentation**: Inline docstrings, architectural documentation, and interactive dashboards
-- **Git Workflow**: Descriptive commits with proper attribution and pre-commit hooks
-- **Container First**: Docker-based development and deployment workflows
+- **Code Quality**: Ruff formatting + linting, Pyright type checking
+- **Testing**: Comprehensive test coverage with 228+ tests
+- **Documentation**: Clear README and API documentation
+- **Container First**: Docker-based workflows
 
 ## 📄 License
 

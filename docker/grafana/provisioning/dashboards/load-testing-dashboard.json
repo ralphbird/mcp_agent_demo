@@ -316,7 +316,7 @@
             "uid": "prometheus"
           },
           "editorMode": "builder",
-          "expr": "rate(load_test_requests_total{success=\"true\"}[30s])",
+          "expr": "rate(load_test_requests_total{success=\"true\"}[10s])",
           "hide": false,
           "instant": false,
           "legendFormat": "Successful Requests/sec",
@@ -329,7 +329,7 @@
             "uid": "prometheus"
           },
           "editorMode": "builder",
-          "expr": "rate(load_test_requests_total{success=\"false\"}[30s])",
+          "expr": "rate(load_test_requests_total{success=\"false\"}[10s])",
           "hide": false,
           "instant": false,
           "legendFormat": "Failed Requests/sec",
@@ -470,7 +470,7 @@
             "uid": "prometheus"
           },
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.50, rate(load_test_request_duration_seconds_bucket[30s])) * 1000",
+          "expr": "histogram_quantile(0.50, rate(load_test_request_duration_seconds_bucket[10s])) * 1000",
           "hide": false,
           "instant": false,
           "legendFormat": "p50",
@@ -483,7 +483,7 @@
             "uid": "prometheus"
           },
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.95, rate(load_test_request_duration_seconds_bucket[30s])) * 1000",
+          "expr": "histogram_quantile(0.95, rate(load_test_request_duration_seconds_bucket[10s])) * 1000",
           "hide": false,
           "instant": false,
           "legendFormat": "p95",
@@ -496,7 +496,7 @@
             "uid": "prometheus"
           },
           "editorMode": "builder",
-          "expr": "histogram_quantile(0.99, rate(load_test_request_duration_seconds_bucket[30s])) * 1000",
+          "expr": "histogram_quantile(0.99, rate(load_test_request_duration_seconds_bucket[10s])) * 1000",
           "hide": false,
           "instant": false,
           "legendFormat": "p99",
@@ -564,7 +564,7 @@
             "uid": "prometheus"
           },
           "editorMode": "builder",
-          "expr": "rate(load_test_currency_pairs_total[30s])",
+          "expr": "rate(load_test_currency_pairs_total[10s])",
           "hide": false,
           "instant": false,
           "legendFormat": "{{from_currency}}/{{to_currency}}",
@@ -665,15 +665,15 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "rate(container_cpu_usage_seconds_total{name=~\"currency-.*\"}[30s]) * 100",
+          "expr": "rate(process_cpu_seconds_total{job=\"load-tester\"}[10s]) * 100",
           "hide": false,
           "instant": false,
-          "legendFormat": "{{name}}",
+          "legendFormat": "{{job}}",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Container CPU Usage",
+      "title": "Load Tester Process CPU Usage",
       "type": "timeseries"
     },
     {
@@ -764,217 +764,15 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "container_memory_usage_bytes{name=~\"currency-.*\"}",
+          "expr": "process_resident_memory_bytes{job=\"load-tester\"}",
           "hide": false,
           "instant": false,
-          "legendFormat": "{{name}}",
+          "legendFormat": "{{job}}",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Container Memory Usage",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "vis": false
-            },
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "max": 100,
-          "min": 0,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "yellow",
-                "value": 70
-              },
-              {
-                "color": "red",
-                "value": 90
-              }
-            ]
-          },
-          "unit": "percent"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 32
-      },
-      "id": 8,
-      "options": {
-        "legend": {
-          "calcs": ["lastNotNull"],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "none"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\"}[30s])) * 100)",
-          "hide": false,
-          "instant": false,
-          "legendFormat": "Host CPU Usage",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Host System CPU Usage",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "vis": false
-            },
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "max": 100,
-          "min": 0,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "yellow",
-                "value": 70
-              },
-              {
-                "color": "red",
-                "value": 90
-              }
-            ]
-          },
-          "unit": "percent"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 32
-      },
-      "id": 9,
-      "options": {
-        "legend": {
-          "calcs": ["lastNotNull"],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "none"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "((node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes) * 100",
-          "hide": false,
-          "instant": false,
-          "legendFormat": "Host Memory Usage",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Host System Memory Usage",
+      "title": "Load Tester Process Memory Usage",
       "type": "timeseries"
     }
   ],

@@ -19,6 +19,7 @@ plotly = "^5.24.0"
 pandas = "^2.2.0"
 uuid-utils = "^0.9.0"
 prometheus-client = "^0.21.0"
+aiohttp = "^3.11.0"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.12.11"

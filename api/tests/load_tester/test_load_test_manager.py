@@ -1,5 +1,7 @@
 """Unit tests for LoadTestManager service."""
 
+from unittest.mock import AsyncMock, patch
+
 import pytest
 from load_tester.models.load_test import LoadTestConfig, LoadTestStatus
 from load_tester.services.load_test_manager import LoadTestManager
@@ -41,12 +43,21 @@ class TestLoadTestManager:
         manager = LoadTestManager()
         config = LoadTestConfig()
 
-        response = await manager.start_load_test(config)
+        # Mock LoadGenerator to avoid actual HTTP requests
+        with patch("load_tester.services.load_test_manager.LoadGenerator") as mock_load_gen_class:
+            mock_load_gen = AsyncMock()
+            mock_load_gen_class.return_value = mock_load_gen
 
-        assert response.status == LoadTestStatus.RUNNING
-        assert response.config == config
-        assert response.started_at is not None
-        assert response.stopped_at is None
+            response = await manager.start_load_test(config)
+
+            assert response.status == LoadTestStatus.RUNNING
+            assert response.config == config
+            assert response.started_at is not None
+            assert response.stopped_at is None
+
+            # Verify LoadGenerator was created and started
+            mock_load_gen_class.assert_called_once_with(config)
+            mock_load_gen.start.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_start_load_test_custom_config(self):
@@ -58,13 +69,18 @@ class TestLoadTestManager:
             amounts=[100.0],
         )
 
-        response = await manager.start_load_test(config)
+        # Mock LoadGenerator to avoid actual HTTP requests
+        with patch("load_tester.services.load_test_manager.LoadGenerator") as mock_load_gen_class:
+            mock_load_gen = AsyncMock()
+            mock_load_gen_class.return_value = mock_load_gen
 
-        assert response.status == LoadTestStatus.RUNNING
-        assert response.config is not None
-        assert response.config.requests_per_second == 5.0
-        assert response.config.currency_pairs == ["USD_EUR"]
-        assert response.config.amounts == [100.0]
+            response = await manager.start_load_test(config)
+
+            assert response.status == LoadTestStatus.RUNNING
+            assert response.config is not None
+            assert response.config.requests_per_second == 5.0
+            assert response.config.currency_pairs == ["USD_EUR"]
+            assert response.config.amounts == [100.0]
 
     @pytest.mark.asyncio
     async def test_start_load_test_already_running(self):
@@ -72,12 +88,17 @@ class TestLoadTestManager:
         manager = LoadTestManager()
         config = LoadTestConfig()
 
-        # Start first load test
-        await manager.start_load_test(config)
+        # Mock LoadGenerator to avoid actual HTTP requests
+        with patch("load_tester.services.load_test_manager.LoadGenerator") as mock_load_gen_class:
+            mock_load_gen = AsyncMock()
+            mock_load_gen_class.return_value = mock_load_gen
 
-        # Try to start another one
-        with pytest.raises(RuntimeError, match="Load test is already running"):
+            # Start first load test
             await manager.start_load_test(config)
+
+            # Try to start another one
+            with pytest.raises(RuntimeError, match="Load test is already running"):
+                await manager.start_load_test(config)
 
     @pytest.mark.asyncio
     async def test_stop_load_test(self):

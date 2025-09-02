@@ -1,15 +1,18 @@
 """Load test execution manager service."""
 
 import asyncio
+from contextlib import suppress
 from datetime import UTC, datetime
 from typing import ClassVar
 
+from load_tester.middleware.metrics import record_load_test_start, record_load_test_stop
 from load_tester.models.load_test import (
     LoadTestConfig,
     LoadTestResponse,
     LoadTestStats,
     LoadTestStatus,
 )
+from load_tester.services.load_generator import LoadGenerator
 
 
 class LoadTestManager:
@@ -35,7 +38,8 @@ class LoadTestManager:
         self._started_at: datetime | None = None
         self._stopped_at: datetime | None = None
         self._error_message: str | None = None
-        self._task: asyncio.Task | None = None
+        self._load_generator: LoadGenerator | None = None
+        self._stats_task: asyncio.Task | None = None
         self._initialized = True
 
     async def start_load_test(self, config: LoadTestConfig) -> LoadTestResponse:
@@ -55,18 +59,32 @@ class LoadTestManager:
                 msg = "Load test is already running"
                 raise RuntimeError(msg)
 
-            self._status = LoadTestStatus.STARTING
-            self._config = config
-            self._stats = LoadTestStats()
-            self._started_at = datetime.now(UTC)
-            self._stopped_at = None
-            self._error_message = None
+            try:
+                self._status = LoadTestStatus.STARTING
+                self._config = config
+                self._stats = LoadTestStats()
+                self._started_at = datetime.now(UTC)
+                self._stopped_at = None
+                self._error_message = None
 
-            # For phase 1, we just simulate starting the load test
-            # In later phases, this will launch actual load generation
-            self._status = LoadTestStatus.RUNNING
+                # Create and start load generator
+                self._load_generator = LoadGenerator(config)
+                await self._load_generator.start()
 
-            return self._get_current_response()
+                # Start stats update task
+                self._stats_task = asyncio.create_task(self._update_stats_periodically())
+
+                # Record metrics
+                record_load_test_start(config.requests_per_second)
+
+                self._status = LoadTestStatus.RUNNING
+                return self._get_current_response()
+
+            except Exception as e:
+                self._status = LoadTestStatus.ERROR
+                self._error_message = str(e)
+                self._load_generator = None
+                return self._get_current_response()
 
     async def stop_load_test(self) -> LoadTestResponse:
         """Stop the currently running load test.
@@ -80,9 +98,19 @@ class LoadTestManager:
 
             self._status = LoadTestStatus.STOPPING
 
-            # Cancel running task if exists
-            if self._task and not self._task.done():
-                self._task.cancel()
+            # Stop load generator
+            if self._load_generator:
+                final_stats = await self._load_generator.stop()
+                self._stats = final_stats
+                self._load_generator = None
+
+            # Cancel stats task if running
+            if self._stats_task and not self._stats_task.done():
+                self._stats_task.cancel()
+                self._stats_task = None
+
+            # Record metrics
+            record_load_test_stop()
 
             self._status = LoadTestStatus.STOPPED
             self._stopped_at = datetime.now(UTC)
@@ -95,7 +123,25 @@ class LoadTestManager:
         Returns:
             Current load test response
         """
+        # Update stats from load generator if running
+        if self._load_generator and self._status == LoadTestStatus.RUNNING:
+            with suppress(Exception):
+                self._stats = await self._load_generator.get_current_stats()
+
         return self._get_current_response()
+
+    async def _update_stats_periodically(self) -> None:
+        """Periodically update statistics from the load generator."""
+        try:
+            while self._status == LoadTestStatus.RUNNING and self._load_generator:
+                await asyncio.sleep(1.0)  # Update stats every second
+                try:
+                    self._stats = await self._load_generator.get_current_stats()
+                except Exception:
+                    # Continue if stats update fails
+                    continue
+        except asyncio.CancelledError:
+            pass
 
     def _get_current_response(self) -> LoadTestResponse:
         """Get the current load test response.

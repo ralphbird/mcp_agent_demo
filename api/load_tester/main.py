@@ -2,8 +2,9 @@
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 
+from load_tester.middleware.metrics import LoadTesterPrometheusMiddleware, get_load_tester_metrics
 from load_tester.routers import control
 
 
@@ -22,6 +23,9 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+
+# Add Prometheus metrics middleware
+app.add_middleware(LoadTesterPrometheusMiddleware)
 
 # Include routers
 app.include_router(control.router)
@@ -42,8 +46,19 @@ async def root() -> dict[str, str | dict[str, str]]:
             "start": "/api/load-test/start",
             "stop": "/api/load-test/stop",
             "status": "/api/load-test/status",
+            "metrics": "/metrics",
         },
     }
+
+
+@app.get("/metrics")
+async def metrics() -> Response:
+    """Prometheus metrics endpoint.
+
+    Returns:
+        Prometheus metrics in text format
+    """
+    return Response(content=get_load_tester_metrics(), media_type="text/plain")
 
 
 if __name__ == "__main__":

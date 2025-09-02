@@ -96,7 +96,7 @@ dashboard:
 # Testing
 test:
 	@echo "Running API tests with coverage..."
-	poetry run pytest api/tests/ -v --cov=currency_app --cov-report=term-missing --cov-report=html
+	poetry run pytest api/tests/ -v --cov=currency_app --cov=load_tester --cov-report=term-missing --cov-report=html
 
 test-quick:
 	@echo "Running API tests (quick)..."

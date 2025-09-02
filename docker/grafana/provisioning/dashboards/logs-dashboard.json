@@ -229,7 +229,7 @@
             "uid": "loki"
           },
           "editorMode": "builder",
-          "expr": "sum by (service) (count_over_time({service=~\"currency-api|load-tester\"} | json | level=\"ERROR\" [1m]))",
+          "expr": "sum by (service) (count_over_time({service=~\"currency-api|load-tester\"} | json | __error__=\"\" | level=\"ERROR\" [1m]))",
           "queryType": "",
           "refId": "A"
         },
@@ -239,7 +239,7 @@
             "uid": "loki"
           },
           "editorMode": "builder",
-          "expr": "sum by (service) (count_over_time({service=~\"currency-api|load-tester\"} | json | level=\"WARNING\" [1m]))",
+          "expr": "sum by (service) (count_over_time({service=~\"currency-api|load-tester\"} | json | __error__=\"\" | level=\"WARNING\" [1m]))",
           "queryType": "",
           "refId": "B"
         }
@@ -330,7 +330,7 @@
             "uid": "loki"
           },
           "editorMode": "builder",
-          "expr": "sum by (service) (count_over_time({service=~\"currency-api|load-tester\"} | json [1m]))",
+          "expr": "sum by (service) (count_over_time({service=~\"currency-api|load-tester\"} | json | __error__=\"\" [1m]))",
           "queryType": "",
           "refId": "A"
         }

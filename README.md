@@ -1,63 +1,61 @@
-# Currency Conversion Demo
+# Currency Conversion API
 
-A comprehensive FastAPI-based currency conversion application designed to demonstrate advanced
-debugging techniques, monitoring, and observability practices in a realistic microservice environment.
+A production-ready FastAPI-based currency conversion system with real-time exchange rates,
+historical data tracking, interactive dashboard, and comprehensive monitoring capabilities.
 
-## 🎯 Project Status
+## ✨ What This System Provides
 
-**Phase 1: ✅ COMPLETE** - Core API Foundation
-**Phase 2: ✅ COMPLETE** - Extended API & Dashboard
-**Phase 3: ✅ COMPLETE** - Full Observability & Advanced Features
-**Phase 4: ✅ COMPLETE** - Docker Deployment & Production Ready
+**Currency Conversion Service**: Convert between 10 major currencies with simulated real-time rates
+and complete transaction history.
 
-## 🚀 Features
+**Interactive Web Dashboard**: Streamlit-based interface for currency conversion, rate visualization,
+and historical trend analysis.
 
-### Phase 1: Core API Foundation
+**Load Testing Platform**: Built-in load testing service to validate API performance under various
+traffic conditions.
 
-- **Currency Conversion**: Convert between 10 major currencies with real-time simulated rates
-- **Health Monitoring**: Basic and detailed health check endpoints
-- **Database Integration**: SQLite storage for complete conversion history
-- **Input Validation**: Comprehensive request validation with structured error responses
-- **Precision Handling**: Proper decimal precision with banker's rounding for financial accuracy
+**Production Monitoring**: Prometheus metrics integration with optional Grafana dashboards for
+comprehensive observability.
 
-### Phase 2: Extended API & Dashboard
+## 🚀 Core Features
 
-- **Exchange Rates API**: Current rates endpoint with comprehensive rate data
-- **Interactive Dashboard**: Streamlit-based web interface with:
-  - Real-time currency converter
-  - Exchange rates table and comparison charts
-  - Currency strength visualizations
-  - Summary statistics and analytics
+### Currency API Features
 
-### Phase 3: Full Observability & Advanced Features
+- **Multi-Currency Support**: Convert between USD, EUR, GBP, JPY, AUD, CAD, CHF, CNY, SEK, NZD
+- **Real-Time Rates**: Simulated exchange rates that update dynamically
+- **Financial Precision**: Proper decimal handling with banker's rounding for accuracy
+- **Complete Audit Trail**: Every conversion tracked with unique IDs and timestamps
+- **Comprehensive Validation**: Structured error responses with detailed validation messages
 
-- **Historical Rate Data**: Time-series storage and API for 30+ days of exchange rate history
-- **Prometheus Metrics**: HTTP requests, conversions, and database operations monitoring
-- **Advanced Dashboard**: Historical trend charts with time-series visualizations
-- **Production Monitoring**: `/metrics` endpoint ready for Prometheus/Grafana integration
-- **Demo Data Generation**: Realistic historical data with proper base currency handling (USD = 1.0)
+### Interactive Dashboard
 
-### Phase 4: Docker Deployment & Production Ready
+- **Currency Converter**: Real-time conversion with rate visualization
+- **Exchange Rate Tables**: Current rates display with comparison tools
+- **Historical Charts**: Time-series visualizations of rate trends over 30+ days
+- **Currency Analytics**: Strength indicators and statistical summaries
+- **Rate Comparison**: Side-by-side currency performance analysis
 
-- **Docker Containerization**: Multi-stage Dockerfile for API and Dashboard services
-- **Docker Compose**: Complete orchestration with persistent volumes and networking
-- **Configuration Management**: Pydantic Settings with environment variable support
-- **Monitoring Stack**: Optional Prometheus + Grafana deployment with profiles
-- **Production Features**: Health checks, proper logging, graceful shutdowns
-- **One-Command Deployment**: `make docker-up` for instant stack deployment
+### Load Testing Service
 
-### Supported Currencies
+- **Performance Testing**: Configurable load tests for API endpoints
+- **Real-Time Monitoring**: Live statistics during test execution
+- **Custom Scenarios**: Adjustable request rates, currency pairs, and test duration
+- **Results Tracking**: Detailed performance metrics and response time analysis
 
-- USD (US Dollar), EUR (Euro), GBP (British Pound)
-- JPY (Japanese Yen), AUD (Australian Dollar), CAD (Canadian Dollar)
-- CHF (Swiss Franc), CNY (Chinese Yuan), SEK (Swedish Krona), NZD (New Zealand Dollar)
+### Production-Ready Features
 
-### Development Tools
+- **Health Monitoring**: Basic and detailed health check endpoints with dependency validation
+- **Prometheus Metrics**: HTTP requests, response times, conversion counts, and database operations
+- **Historical Data**: 30+ days of exchange rate history with time-series analysis
+- **Docker Deployment**: Complete containerization with orchestration and persistent storage
+- **Configuration Management**: Environment-based settings with validation
 
-- **Testing**: Comprehensive test suite with 30 tests (unit + integration)
-- **Code Quality**: Ruff for formatting/linting + Pyright for type checking + Markdownlint
-- **Workflow**: Make commands for streamlined development
-- **Dashboard**: Streamlit for interactive data visualization
+### Monitoring & Observability
+
+- **Metrics Endpoint**: `/metrics` for Prometheus scraping
+- **Optional Grafana**: Pre-configured dashboards for performance monitoring
+- **Request Tracing**: UUID-based tracking for debugging and analytics
+- **Database Monitoring**: Connection health and query performance tracking
 
 ## 🛠️ Quick Start
 
@@ -116,7 +114,7 @@ make dev
 
 # Run the Streamlit dashboard (in another terminal)
 make dashboard
-# or: cd api && poetry run streamlit run dashboard/app.py
+# or: poetry run streamlit run dashboard/app.py
 ```
 
 The dashboard will be available at:
@@ -272,98 +270,101 @@ make check         # Run quality checks + tests (full validation)
 ### Manual Commands
 
 ```bash
-cd api
-
-# Run application
-poetry run python -m currency_app.main
-poetry run uvicorn currency_app.main:app --reload
+# Run applications
+poetry run python -m currency_app.main              # Currency API
+poetry run uvicorn currency_app.main:app --reload   # Currency API with auto-reload
+poetry run streamlit run dashboard/app.py           # Dashboard
+poetry run python -m load_tester.main               # Load tester
 
 # Testing
-poetry run pytest -v
-poetry run pytest tests/test_currency_service.py
+poetry run pytest -v                                # All tests
+poetry run pytest tests/currency_app/ -v            # Currency app tests
+poetry run pytest tests/load_tester/ -v             # Load tester tests
 
 # Code quality
-poetry run ruff format .
-poetry run ruff check .
-poetry run pyright
+poetry run ruff format .                            # Format code
+poetry run ruff check .                             # Lint code
+poetry run pyright                                  # Type checking
 ```
 
 ## 📁 Project Structure
 
 ```text
 mcp_agent_demo/
-├── api/                          # Core API service
-│   ├── currency_app/            # Main application code
-│   │   ├── models/              # Pydantic & SQLAlchemy models
-│   │   ├── routers/             # FastAPI route handlers
-│   │   ├── services/            # Business logic
-│   │   ├── database.py          # Database configuration
-│   │   └── main.py              # FastAPI application
-│   ├── dashboard/               # Phase 2: Streamlit dashboard
-│   │   ├── app.py              # Main dashboard application
-│   │   └── __init__.py         # Package initialization
-│   ├── tests/                   # Test suite
-│   ├── pyproject.toml          # Poetry configuration
-│   └── README.md               # API-specific documentation
-├── .claude/                    # Development specifications
+├── currency_app/               # Currency conversion API service
+│   ├── models/                # Pydantic & SQLAlchemy models
+│   ├── routers/               # FastAPI route handlers
+│   ├── services/              # Business logic
+│   ├── middleware/            # Prometheus metrics middleware
+│   ├── database.py            # Database configuration
+│   └── main.py                # FastAPI application
+├── dashboard/                  # Streamlit web dashboard
+│   └── app.py                 # Interactive dashboard application
+├── load_tester/               # Load testing service
+│   ├── models/                # Load test configuration models
+│   ├── services/              # Load testing logic
+│   ├── routers/               # Load test API endpoints
+│   └── main.py                # Load tester FastAPI application
+├── tests/                     # Test suite organized by module
+│   ├── currency_app/          # Currency API tests
+│   ├── load_tester/           # Load tester tests
+│   └── dashboard/             # Dashboard tests
+├── pyproject.toml             # Poetry configuration
 ├── Makefile                   # Development workflow commands
 ├── CLAUDE.md                  # Claude Code usage instructions
-└── README.md                  # This file
+└── README.md                  # This documentation
 ```
-
-## 🔮 Roadmap
-
-### Phase 3: Full Observability & Advanced Features (Planned)
-
-- **GET /api/v1/rates/history** - Historical rate data and analytics
-- **Monitoring Stack** - Prometheus metrics + Grafana dashboards
-- **Load Testing** - Performance testing capabilities
-- **Containerization** - Docker + Docker Compose for local deployment
 
 ## 🧪 Testing
 
-The project includes a comprehensive test suite with 30 tests:
+The project includes a comprehensive test suite with 228 tests organized by module:
 
-- **Unit Tests**: Currency service logic, validation, calculations (15 tests)
-- **Integration Tests**: API endpoints, database operations, error handling (15 tests)
-- **Phase 2 Coverage**: Exchange rates endpoint testing (3 new tests)
-- **Edge Cases**: Invalid inputs, boundary conditions, error scenarios
+- **Currency App Tests**: API endpoints, service logic, database operations, and metrics
+- **Load Tester Tests**: Load testing manager functionality and configuration
+- **Dashboard Tests**: (Future dashboard-specific tests)
+- **Coverage Areas**: Unit tests, integration tests, edge cases, and error scenarios
 
 ```bash
-# Run specific test categories
-poetry run pytest tests/test_currency_service.py  # Unit tests
-poetry run pytest tests/test_api.py              # Integration tests (includes rates endpoint)
+# Run specific test modules
+poetry run pytest tests/currency_app/ -v        # Currency conversion tests
+poetry run pytest tests/load_tester/ -v        # Load testing tests
+poetry run pytest tests/currency_app/test_api.py -v  # API integration tests
+poetry run pytest tests/currency_app/test_currency_service.py -v  # Service unit tests
 ```
 
 ## 🏗️ Architecture
 
-**Current Architecture (Phases 1 & 2):**
+### Technology Stack
 
 - **FastAPI**: Modern async web framework with comprehensive API endpoints
-- **SQLAlchemy**: Database ORM with SQLite backend
-- **Pydantic**: Data validation and serialization
-- **Streamlit**: Interactive dashboard for data visualization
+- **SQLAlchemy**: Database ORM with SQLite backend for development
+- **Pydantic**: Data validation, serialization, and settings management
+- **Streamlit**: Interactive dashboard for data visualization and analytics
 - **Plotly**: Advanced charting and visualization components
 - **Pandas**: Data manipulation for dashboard analytics
+- **Prometheus**: Metrics collection and monitoring integration
 - **Poetry**: Dependency management and packaging
-- **Ruff + Pyright + Markdownlint**: Code quality and documentation standards
+- **Docker**: Containerization with multi-stage builds
+- **Ruff + Pyright**: Code quality, formatting, linting, and type checking
 
-**Key Design Decisions:**
+### Key Design Principles
 
-- **Simulated Rates**: Static exchange rates for consistent testing
-- **Decimal Precision**: Financial-grade decimal handling
-- **Banker's Rounding**: Industry-standard rounding for currency
-- **Request Tracking**: Complete audit trail with UUIDs
-- **Structured Errors**: Consistent error response format
+- **Financial Precision**: Decimal-based calculations with banker's rounding for currency accuracy
+- **Request Tracing**: Complete audit trail with UUID tracking for all transactions
+- **Structured Validation**: Comprehensive input validation with detailed error responses
+- **Separation of Concerns**: Clean architecture with separate service, router, and model layers
+- **Observability First**: Built-in metrics, health checks, and monitoring capabilities
+- **Container Ready**: Production deployment via Docker with persistent data storage
 
 ## 🤝 Contributing
 
-This is a demo project showcasing incremental development practices. The codebase follows:
+This is a production-ready demo project showcasing modern development practices. The codebase follows:
 
 - **Code Quality**: Ruff formatting + linting, Pyright type checking, Markdownlint documentation standards
-- **Testing**: >80% coverage target with comprehensive test scenarios (30 tests across phases)
-- **Documentation**: Inline docstrings + architectural documentation + interactive dashboards
+- **Testing**: Comprehensive test coverage with 228+ tests across all modules
+- **Documentation**: Inline docstrings, architectural documentation, and interactive dashboards
 - **Git Workflow**: Descriptive commits with proper attribution and pre-commit hooks
+- **Container First**: Docker-based development and deployment workflows
 
 ## 📄 License
 

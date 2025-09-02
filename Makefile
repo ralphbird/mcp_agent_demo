@@ -1,4 +1,4 @@
-.PHONY: help setup install test lint format type-check quality dev run dashboard clean test-quick markdownlint install-markdownlint install-precommit demo-data clean-demo-data docker-build docker-up docker-down docker-logs docker-clean docker-monitor docker-setup docker-rebuild docker-restart
+.PHONY: help setup install test lint format type-check quality dev run dashboard load-tester load-test-quick load-test-status load-test-stop load-test-light load-test-moderate load-test-heavy load-test-scenarios load-test-report load-test-report-md clean test-quick markdownlint install-markdownlint install-precommit demo-data clean-demo-data docker-build docker-up docker-down docker-logs docker-clean docker-monitor docker-setup docker-rebuild docker-restart docker-load-test
 
 # Default target
 help:
@@ -14,6 +14,14 @@ help:
 	@echo "  run               - Run the API server"
 	@echo "  dev               - Run API server in development mode with auto-reload"
 	@echo "  dashboard         - Run the Streamlit dashboard (requires API server running)"
+	@echo "  load-tester       - Run the Load Tester service (requires API server running)"
+	@echo "  load-test-quick   - Run a quick load test (default settings)"
+	@echo "  load-test-status  - Check current load test status"
+	@echo "  load-test-light   - Run light load test scenario"
+	@echo "  load-test-moderate - Run moderate load test scenario"
+	@echo "  load-test-heavy   - Run heavy load test scenario"
+	@echo "  load-test-report  - Generate detailed load test report"
+	@echo "  load-test-scenarios - List all available test scenarios"
 	@echo ""
 	@echo "Testing & Quality:"
 	@echo "  test              - Run all tests with coverage report"
@@ -31,12 +39,13 @@ help:
 	@echo ""
 	@echo "🐳 Docker:"
 	@echo "  docker-build      - Build Docker images"
-	@echo "  docker-up         - Start all services with Docker Compose"
+	@echo "  docker-up         - Start all services (API + Dashboard + Load Tester)"
 	@echo "  docker-down       - Stop all Docker services"
 	@echo "  docker-rebuild    - Stop, rebuild, and restart all services in one command"
 	@echo "  docker-logs       - View Docker service logs"
 	@echo "  docker-clean      - Clean Docker images and volumes"
 	@echo "  docker-monitor    - Start services with monitoring (Prometheus + Grafana)"
+	@echo "  docker-load-test  - Run load test against Docker stack"
 	@echo ""
 	@echo "Utilities:"
 	@echo "  clean             - Clean up temporary files and databases"
@@ -69,10 +78,12 @@ setup:
 	@echo "🎉 Complete setup finished!"
 	@echo ""
 	@echo "🚀 Ready to start development:"
-	@echo "   make dev      # Start API server (http://localhost:8000)"
-	@echo "   make dashboard # Start dashboard (http://localhost:8501) [in another terminal]"
-	@echo "   make test     # Run full test suite"
-	@echo "   make quality  # Run code quality checks"
+	@echo "   make dev           # Start API server (http://localhost:8000)"
+	@echo "   make dashboard     # Start dashboard (http://localhost:8501) [in another terminal]"
+	@echo "   make load-tester   # Start load tester (http://localhost:8001) [in another terminal]"
+	@echo "   make test          # Run full test suite"
+	@echo "   make quality       # Run code quality checks"
+	@echo "   make docker-up     # Or start everything with Docker"
 
 # Installation
 install:
@@ -92,6 +103,56 @@ dashboard:
 	@echo "Starting Streamlit dashboard..."
 	@echo "Make sure the API server is running first (make dev in another terminal)"
 	poetry run streamlit run api/dashboard/app.py
+
+# Load Tester commands
+load-tester:
+	@echo "Starting Load Tester service..."
+	@echo "Make sure the API server is running first (make dev in another terminal)"
+	poetry run python -m load_tester.main
+
+load-test-quick:
+	@echo "Running quick load test..."
+	@echo "Starting default load test (1 req/s for 30 seconds)..."
+	curl -X POST "http://localhost:8001/api/load-test/start" \
+		-H "Content-Type: application/json" \
+		-d '{"config": {"requests_per_second": 1.0}}' && \
+	sleep 30 && \
+	curl -X POST "http://localhost:8001/api/load-test/stop" && \
+	curl -s "http://localhost:8001/api/load-test/status" | python -m json.tool
+
+load-test-status:
+	@echo "Checking load test status..."
+	curl -s "http://localhost:8001/api/load-test/status" | python -m json.tool
+
+load-test-stop:
+	@echo "Stopping current load test..."
+	curl -X POST "http://localhost:8001/api/load-test/stop" | python -m json.tool
+
+# Scenario-based load tests
+load-test-light:
+	@echo "Running light load test scenario (0.5 req/s for 60s)..."
+	curl -X POST "http://localhost:8001/api/load-test/scenarios/light/start" | python -m json.tool
+
+load-test-moderate:
+	@echo "Running moderate load test scenario (5 req/s for 120s)..."
+	curl -X POST "http://localhost:8001/api/load-test/scenarios/moderate/start" | python -m json.tool
+
+load-test-heavy:
+	@echo "Running heavy load test scenario (15 req/s for 300s)..."
+	curl -X POST "http://localhost:8001/api/load-test/scenarios/heavy/start" | python -m json.tool
+
+load-test-scenarios:
+	@echo "Available load test scenarios:"
+	curl -s "http://localhost:8001/api/load-test/scenarios" | python -m json.tool
+
+load-test-report:
+	@echo "Generating load test report..."
+	curl -s "http://localhost:8001/api/load-test/report" | python -m json.tool
+
+load-test-report-md:
+	@echo "Downloading Markdown load test report..."
+	curl -s "http://localhost:8001/api/load-test/report/markdown" -o load_test_report.md
+	@echo "Report saved as load_test_report.md"
 
 # Testing
 test:
@@ -207,9 +268,13 @@ docker-up:
 	@echo "   API: http://localhost:8000"
 	@echo "   API Docs: http://localhost:8000/docs"
 	@echo "   Dashboard: http://localhost:8501"
+	@echo "   Load Tester: http://localhost:8001"
+	@echo "   Load Tester Docs: http://localhost:8001/docs"
 	@echo "   Metrics: http://localhost:8000/metrics"
+	@echo "   Load Tester Metrics: http://localhost:8001/metrics"
 	@echo ""
 	@echo "📊 View logs: make docker-logs"
+	@echo "🔥 Run load test: make docker-load-test"
 	@echo "🛑 Stop services: make docker-down"
 
 docker-down:
@@ -235,11 +300,26 @@ docker-monitor:
 	@echo "🚀 Services available at:"
 	@echo "   API: http://localhost:8000"
 	@echo "   Dashboard: http://localhost:8501"
+	@echo "   Load Tester: http://localhost:8001"
 	@echo "   Prometheus: http://localhost:9090"
 	@echo "   Grafana: http://localhost:3000 (admin/admin)"
 	@echo ""
 	@echo "📊 View logs: make docker-logs"
+	@echo "🔥 Run load test: make docker-load-test"
 	@echo "🛑 Stop services: make docker-down"
+
+docker-load-test:
+	@echo "🔥 Running load test against Docker stack..."
+	@echo "Starting moderate load test (5 req/s for 60 seconds)..."
+	curl -X POST "http://localhost:8001/api/load-test/start" \
+		-H "Content-Type: application/json" \
+		-d '{"config": {"requests_per_second": 5.0, "currency_pairs": ["USD_EUR", "USD_GBP", "EUR_GBP"], "amounts": [100.0, 500.0, 1000.0]}}' && \
+	@echo "Load test started! Monitoring for 60 seconds..." && \
+	sleep 60 && \
+	@echo "Stopping load test and showing results..." && \
+	curl -X POST "http://localhost:8001/api/load-test/stop" && \
+	echo "" && \
+	curl -s "http://localhost:8001/api/load-test/status" | python -m json.tool
 
 # Docker development workflow
 docker-setup: docker-build

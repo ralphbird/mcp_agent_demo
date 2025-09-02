@@ -76,3 +76,24 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 
 # Run the dashboard
 CMD ["poetry", "run", "streamlit", "run", "api/dashboard/app.py", "--server.address", "0.0.0.0", "--server.port", "8501"]
+
+# Load Tester Service Stage
+FROM base AS load-tester
+
+# Copy application code
+COPY api/ ./api/
+COPY scripts/ ./scripts/
+COPY README.md ./
+
+# Install the application (including the current project)
+RUN poetry install --only=main
+
+# Expose port
+EXPOSE 8001
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8001/ || exit 1
+
+# Run the load tester
+CMD ["poetry", "run", "python", "-m", "load_tester.main"]

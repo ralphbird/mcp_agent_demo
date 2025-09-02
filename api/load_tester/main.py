@@ -46,6 +46,11 @@ async def root() -> dict[str, str | dict[str, str]]:
             "start": "/api/load-test/start",
             "stop": "/api/load-test/stop",
             "status": "/api/load-test/status",
+            "report": "/api/load-test/report",
+            "report_markdown": "/api/load-test/report/markdown",
+            "scenarios": "/api/load-test/scenarios",
+            "scenario_start": "/api/load-test/scenarios/{scenario}/start",
+            "scenario_report": "/api/load-test/scenarios/{scenario}/report",
             "metrics": "/metrics",
         },
     }

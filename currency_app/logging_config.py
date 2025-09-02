@@ -41,6 +41,12 @@ class JSONFormatter(logging.Formatter):
         if hasattr(record, "client_ip"):
             log_entry["client_ip"] = getattr(record, "client_ip")  # type: ignore  # noqa: B009
 
+        # Add tracing context fields
+        if hasattr(record, "trace_id"):
+            log_entry["trace_id"] = getattr(record, "trace_id")  # type: ignore  # noqa: B009
+        if hasattr(record, "span_id"):
+            log_entry["span_id"] = getattr(record, "span_id")  # type: ignore  # noqa: B009
+
         # Add exception info if present
         if record.exc_info:
             log_entry["exception"] = self.formatException(record.exc_info)

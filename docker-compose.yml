@@ -15,6 +15,7 @@ services:
     environment:
       - PYTHONPATH=/app
       - DATABASE_URL=sqlite:///currency_demo.db
+      - JAEGER_ENDPOINT=http://jaeger:4317
     logging:
       driver: "json-file"
       options:
@@ -89,6 +90,7 @@ services:
       - LOAD_TESTER_TARGET_API_BASE_URL=http://api:8000
       - LOAD_TESTER_API_HOST=0.0.0.0
       - LOAD_TESTER_API_PORT=8001
+      - JAEGER_ENDPOINT=http://jaeger:4317
     logging:
       driver: "json-file"
       options:
@@ -195,6 +197,25 @@ services:
     depends_on:
       - prometheus
       - loki
+    restart: unless-stopped
+    networks:
+      - currency-network
+
+  # Jaeger for distributed tracing
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: currency-jaeger
+    ports:
+      - "16686:16686"  # Jaeger UI
+      - "14250:14250"  # gRPC
+      - "14268:14268"  # HTTP thrift
+      - "4317:4317"    # OTLP gRPC
+      - "4318:4318"    # OTLP HTTP
+      - "6831:6831/udp"  # UDP thrift compact
+      - "6832:6832/udp"  # UDP thrift binary
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+      - COLLECTOR_ZIPKIN_HOST_PORT=:9411
     restart: unless-stopped
     networks:
       - currency-network

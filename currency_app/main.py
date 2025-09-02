@@ -9,6 +9,7 @@ from currency_app.logging_config import configure_logging, get_logger
 from currency_app.middleware.logging import LoggingMiddleware
 from currency_app.middleware.metrics import PrometheusMiddleware, get_metrics
 from currency_app.routers import conversion, health, home, rates
+from currency_app.tracing_config import configure_tracing, instrument_application
 
 # Configure logging at module level
 configure_logging()
@@ -18,8 +19,22 @@ logger = get_logger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan events."""
-    # Startup: Create database tables
+    # Startup: Initialize tracing and create database tables
     logger.info("Starting Currency API application")
+
+    # Configure tracing
+    try:
+        configure_tracing(
+            service_name="currency-api",
+            enable_console_export=True,  # Enable for development
+        )
+        instrument_application()
+        logger.info("OpenTelemetry tracing configured successfully")
+    except Exception:
+        logger.error("Failed to configure tracing", exc_info=True)
+        # Don't fail startup for tracing issues
+
+    # Create database tables
     try:
         create_tables()
         logger.info("Database tables created successfully")

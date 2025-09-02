@@ -5,11 +5,27 @@ import uuid
 from collections.abc import Callable
 
 from fastapi import Request, Response
+from opentelemetry import trace
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from currency_app.logging_config import get_logger
 
 logger = get_logger(__name__)
+
+
+def get_trace_context() -> dict[str, str]:
+    """Extract trace context for logging.
+
+    Returns:
+        Dictionary containing trace and span IDs
+    """
+    span_context = trace.get_current_span().get_span_context()
+    if span_context.is_valid:
+        return {
+            "trace_id": f"{span_context.trace_id:032x}",
+            "span_id": f"{span_context.span_id:016x}",
+        }
+    return {}
 
 
 class LoggingMiddleware(BaseHTTPMiddleware):
@@ -38,6 +54,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         start_time = time.time()
 
         # Log incoming request
+        trace_context = get_trace_context()
         logger.info(
             f"Incoming request: {method} {url}",
             extra={
@@ -46,6 +63,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
                 "endpoint": url,
                 "client_ip": client_ip,
                 "user_agent": user_agent,
+                **trace_context,
             },
         )
 
@@ -69,6 +87,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
                     "status_code": response.status_code,
                     "response_time_ms": response_time_ms,
                     "client_ip": client_ip,
+                    **trace_context,
                 },
             )
 
@@ -87,6 +106,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
                     "endpoint": url,
                     "response_time_ms": response_time_ms,
                     "client_ip": client_ip,
+                    **trace_context,
                 },
                 exc_info=True,
             )

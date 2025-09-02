@@ -52,10 +52,12 @@ comprehensive observability.
 
 ### Monitoring & Observability
 
+- **Distributed Tracing**: OpenTelemetry integration with Jaeger for end-to-end request tracing
 - **Metrics Endpoint**: `/metrics` for Prometheus scraping
 - **Optional Grafana**: Pre-configured dashboards for performance monitoring
-- **Request Tracing**: UUID-based tracking for debugging and analytics
+- **Request Correlation**: UUID-based tracking with trace context for debugging and analytics
 - **Database Monitoring**: Connection health and query performance tracking
+- **Structured Logging**: JSON logs with trace correlation and business context
 
 ## 🛠️ Quick Start
 
@@ -169,6 +171,48 @@ Additional services available:
 
 - **Prometheus**: <http://localhost:9090> (Metrics collection)
 - **Grafana**: <http://localhost:3000> (admin/admin - Dashboards)
+- **Jaeger**: <http://localhost:16686> (Distributed tracing UI)
+
+## 🔍 Distributed Tracing
+
+The system includes comprehensive distributed tracing with OpenTelemetry and Jaeger:
+
+### Tracing Features
+
+- **End-to-End Request Tracing**: Track requests across all services and components
+- **Business Logic Spans**: Detailed spans for currency conversions, rate lookups, and validations
+- **Database Query Tracing**: Automatic SQLAlchemy instrumentation for database operations
+- **HTTP Request Tracing**: FastAPI auto-instrumentation for all HTTP endpoints
+- **Cross-Service Correlation**: Trace propagation between currency API and load tester
+- **Error Context**: Rich error information with trace correlation
+
+### Accessing Traces
+
+When running with Docker:
+
+```bash
+# Start with full monitoring stack
+make docker-monitor
+
+# Access Jaeger UI
+open http://localhost:16686
+```
+
+View traces by:
+
+1. **Service**: Select `currency-api` or `load-tester`
+2. **Operation**: Filter by specific endpoints or operations
+3. **Tags**: Search by currency pairs, amounts, or error types
+4. **Time Range**: Analyze performance over time
+
+### Trace Data
+
+Each trace includes:
+
+- **HTTP Layer**: Request/response timing, status codes, endpoints
+- **Business Logic**: Currency validation, exchange rate calculations, conversions
+- **Database**: Query execution times, connection pooling
+- **Errors**: Exception details, stack traces, business context
 
 ### Quick Test
 

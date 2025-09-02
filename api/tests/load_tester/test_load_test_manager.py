@@ -1,5 +1,6 @@
 """Unit tests for LoadTestManager service."""
 
+from contextlib import suppress
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -11,12 +12,16 @@ class TestLoadTestManager:
     """Test LoadTestManager functionality."""
 
     @pytest.fixture(autouse=True)
-    def reset_manager(self):
+    async def reset_manager(self):
         """Reset manager state before each test."""
         # Clear singleton instance to ensure clean state
         LoadTestManager._instance = None
         yield
-        # Clean up after test
+        # Clean up after test - ensure any running load tests are stopped
+        if LoadTestManager._instance is not None:
+            manager = LoadTestManager._instance
+            with suppress(Exception):
+                await manager.stop_load_test()  # type: ignore[misc]
         LoadTestManager._instance = None
 
     def test_singleton_pattern(self):

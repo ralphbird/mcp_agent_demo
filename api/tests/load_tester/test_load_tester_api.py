@@ -1,5 +1,7 @@
 """Integration tests for Load Tester API endpoints."""
 
+from contextlib import suppress
+
 import pytest
 from fastapi.testclient import TestClient
 from load_tester.main import app
@@ -8,12 +10,16 @@ from load_tester.services.load_test_manager import LoadTestManager
 
 
 @pytest.fixture(autouse=True)
-def reset_load_test_manager():
+async def reset_load_test_manager():
     """Reset load test manager before each test."""
     # Clear singleton instance to ensure clean state
     LoadTestManager._instance = None
     yield
-    # Clean up after test
+    # Clean up after test - ensure any running load tests are stopped
+    if LoadTestManager._instance is not None:
+        manager = LoadTestManager._instance
+        with suppress(Exception):
+            await manager.stop_load_test()  # type: ignore[misc]
     LoadTestManager._instance = None
 
 

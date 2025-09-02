@@ -88,8 +88,10 @@ class LoadGenerator:
             if not task.done():
                 task.cancel()
 
-        # Wait for all tasks to complete
+        # Wait for all tasks to complete with cancellation
         if self._tasks:
+            # Give a small delay for graceful cancellation
+            await asyncio.sleep(0.01)
             await asyncio.gather(*self._tasks, return_exceptions=True)
 
         # Close HTTP session

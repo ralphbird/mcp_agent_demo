@@ -107,6 +107,8 @@ class LoadTestManager:
             # Cancel stats task if running
             if self._stats_task and not self._stats_task.done():
                 self._stats_task.cancel()
+                with suppress(asyncio.CancelledError):
+                    await self._stats_task
                 self._stats_task = None
 
             # Record metrics

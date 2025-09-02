@@ -1,5 +1,6 @@
 """Unit tests for LoadGenerator service."""
 
+from contextlib import suppress
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -51,9 +52,14 @@ class TestLoadGenerator:
         )
 
     @pytest.fixture
-    def load_generator(self, config):
+    async def load_generator(self, config):
         """Create load generator instance."""
-        return LoadGenerator(config)
+        generator = LoadGenerator(config)
+        yield generator
+        # Ensure cleanup after each test
+        with suppress(Exception):
+            if generator.is_running:
+                await generator.stop()
 
     def test_initialization(self, load_generator, config):
         """Test load generator initialization."""

@@ -3,6 +3,7 @@
 from decimal import Decimal
 
 import pytest
+
 from load_tester.services.currency_patterns import CurrencyPatterns
 
 

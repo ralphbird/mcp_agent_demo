@@ -37,8 +37,8 @@ make check        # Run quality + tests (full validation)
 ```bash
 make test              # Full test suite with coverage report
 make test-quick        # Quick test run without coverage
-poetry run pytest api/tests/test_api.py -v        # Run specific test file
-poetry run pytest api/tests/test_api.py::test_convert_currencies -v  # Run single test
+poetry run pytest tests/currency_app/test_api.py -v        # Run specific test file
+poetry run pytest tests/currency_app/test_api.py::test_convert_currencies -v  # Run single test
 poetry run pytest -k "test_convert" -v           # Run tests matching pattern
 ```
 
@@ -74,7 +74,7 @@ make clean-demo-data  # Clean database and regenerate demo data
 ### Application Structure
 
 ```text
-api/currency_app/
+currency_app/
 ├── main.py              # FastAPI app with lifespan management, middleware setup
 ├── config.py            # Pydantic Settings for environment-based configuration
 ├── database.py          # SQLAlchemy engine, session management
@@ -90,6 +90,15 @@ api/currency_app/
 │   └── database.py      # SQLAlchemy ORM models
 └── middleware/
     └── metrics.py       # Prometheus metrics collection
+
+load_tester/
+├── main.py              # Load tester FastAPI application
+├── models/              # Load test data models
+├── services/            # Load testing business logic
+└── routers/             # Load test API endpoints
+
+dashboard/
+└── app.py               # Streamlit dashboard application
 ```
 
 ### Key Architectural Patterns
@@ -107,7 +116,7 @@ managed via FastAPI dependencies (`get_db()`). Test isolation uses separate test
 tracks HTTP requests, response times, and database operations. Metrics available at `/metrics`.
 
 **Testing Strategy**: 117 tests with database isolation. Each test suite uses separate
-test databases in `api/tests/databases/`. Integration tests override database dependencies.
+test databases in `tests/currency_app/databases/`. Integration tests override database dependencies.
 
 ### Database Models
 
@@ -130,14 +139,19 @@ optional monitoring stack (Prometheus + Grafana) via profiles.
 ### Test Organization
 
 ```text
-api/tests/
-├── test_api.py                 # Integration tests for all endpoints
-├── test_currency_service.py    # Unit tests for core business logic
-├── test_rates_history_service.py  # Historical data service tests
-├── test_models.py              # Pydantic model validation tests
-├── test_database.py            # Database connection and migration tests
-├── test_metrics_*.py           # Prometheus metrics tests (4 files)
-└── databases/                  # Isolated test databases
+tests/
+├── currency_app/
+│   ├── test_api.py                 # Integration tests for all endpoints
+│   ├── test_currency_service.py    # Unit tests for core business logic
+│   ├── test_rates_history_service.py  # Historical data service tests
+│   ├── test_models.py              # Pydantic model validation tests
+│   ├── test_database.py            # Database connection and migration tests
+│   ├── test_metrics_*.py           # Prometheus metrics tests (4 files)
+│   └── databases/                  # Isolated test databases
+├── load_tester/
+│   └── test_*.py                   # Load tester tests
+└── dashboard/
+    └── (future dashboard tests)
 ```
 
 ### Test Database Isolation
@@ -187,8 +201,10 @@ internal networking (`api:8000` for dashboard to API communication)
 
 Configured hooks run automatically before each commit:
 
-- **Ruff**: Code formatting and linting (Python files in `api/`)
-- **Pyright**: Type checking (Python files in `api/`)
+- **Ruff**: Code formatting and linting (Python files in `currency_app/`, `load_tester/`,
+  `dashboard/`, `tests/`)
+- **Pyright**: Type checking (Python files in `currency_app/`, `load_tester/`, `dashboard/`,
+  `tests/`)
 - **Markdownlint**: Markdown formatting (all `.md` files)
 - **General**: Trailing whitespace, end-of-file-fixer, YAML/TOML validation
 

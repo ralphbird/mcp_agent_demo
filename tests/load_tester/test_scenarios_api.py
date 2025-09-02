@@ -4,6 +4,7 @@ from contextlib import suppress
 
 import pytest
 from fastapi.testclient import TestClient
+
 from load_tester.main import app
 from load_tester.models.load_test import LoadTestStatus
 from load_tester.services.load_test_manager import LoadTestManager

@@ -33,7 +33,10 @@ RUN poetry install --only=main --no-root && rm -rf $POETRY_CACHE_DIR
 FROM base AS api
 
 # Copy application code
-COPY api/ ./api/
+COPY currency_app/ ./currency_app/
+COPY load_tester/ ./load_tester/
+COPY dashboard/ ./dashboard/
+COPY tests/ ./tests/
 COPY scripts/ ./scripts/
 COPY README.md ./
 
@@ -41,7 +44,7 @@ COPY README.md ./
 RUN poetry install --only=main
 
 # Create directories for data persistence
-RUN mkdir -p /app/data /app/api/tests/databases
+RUN mkdir -p /app/data /app/tests/currency_app/databases
 
 # Expose port
 EXPOSE 8000
@@ -57,7 +60,10 @@ CMD ["poetry", "run", "uvicorn", "currency_app.main:app", "--host", "0.0.0.0", "
 FROM base AS dashboard
 
 # Copy application code
-COPY api/ ./api/
+COPY currency_app/ ./currency_app/
+COPY load_tester/ ./load_tester/
+COPY dashboard/ ./dashboard/
+COPY tests/ ./tests/
 COPY scripts/ ./scripts/
 COPY README.md ./
 
@@ -75,13 +81,16 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8501/_stcore/health || exit 1
 
 # Run the dashboard
-CMD ["poetry", "run", "streamlit", "run", "api/dashboard/app.py", "--server.address", "0.0.0.0", "--server.port", "8501"]
+CMD ["poetry", "run", "streamlit", "run", "dashboard/app.py", "--server.address", "0.0.0.0", "--server.port", "8501"]
 
 # Load Tester Service Stage
 FROM base AS load-tester
 
 # Copy application code
-COPY api/ ./api/
+COPY currency_app/ ./currency_app/
+COPY load_tester/ ./load_tester/
+COPY dashboard/ ./dashboard/
+COPY tests/ ./tests/
 COPY scripts/ ./scripts/
 COPY README.md ./
 

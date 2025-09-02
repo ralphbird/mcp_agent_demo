@@ -3,6 +3,7 @@
 from datetime import UTC, datetime
 
 import pytest
+
 from load_tester.models.load_test import (
     LoadTestConfig,
     LoadTestResponse,

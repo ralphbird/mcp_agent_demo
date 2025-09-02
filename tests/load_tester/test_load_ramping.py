@@ -4,6 +4,7 @@ import asyncio
 from contextlib import suppress
 
 import pytest
+
 from load_tester.models.load_test import LoadTestConfig, LoadTestStatus
 from load_tester.services.load_generator import LoadGenerator
 from load_tester.services.load_test_manager import LoadTestManager

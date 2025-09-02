@@ -4,6 +4,7 @@ from contextlib import suppress
 from unittest.mock import AsyncMock, patch
 
 import pytest
+
 from load_tester.models.load_test import LoadTestConfig
 from load_tester.services.load_generator import LoadGenerationResult, LoadGenerator
 

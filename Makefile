@@ -72,7 +72,7 @@ setup:
 	@echo "✅ Demo data generated"
 	@echo ""
 	@echo "🧪 Step 4: Running quick tests to verify setup..."
-	poetry run pytest api/tests/ -x -q
+	poetry run pytest tests/ -x -q
 	@echo "✅ Tests passed"
 	@echo ""
 	@echo "🎉 Complete setup finished!"
@@ -102,7 +102,7 @@ dev:
 dashboard:
 	@echo "Starting Streamlit dashboard..."
 	@echo "Make sure the API server is running first (make dev in another terminal)"
-	poetry run streamlit run api/dashboard/app.py
+	poetry run streamlit run dashboard/app.py
 
 # Load Tester commands
 load-tester:
@@ -157,28 +157,28 @@ load-test-report-md:
 # Testing
 test:
 	@echo "Running API tests with coverage..."
-	poetry run pytest api/tests/ -v --cov=currency_app --cov=load_tester --cov-report=term-missing --cov-report=html
+	poetry run pytest tests/ -v --cov=currency_app --cov=load_tester --cov-report=term-missing --cov-report=html
 
 test-quick:
 	@echo "Running API tests (quick)..."
-	poetry run pytest api/tests/
+	poetry run pytest tests/
 
 # Code quality
 format:
 	@echo "Formatting API code..."
-	poetry run ruff format api/
+	poetry run ruff format currency_app/ load_tester/ dashboard/ tests/
 
 lint:
 	@echo "Linting API code..."
-	poetry run ruff check --fix api/
+	poetry run ruff check --fix currency_app/ load_tester/ dashboard/ tests/
 
 type-check:
 	@echo "Type checking API code..."
-	poetry run pyright api/
+	poetry run pyright currency_app/ load_tester/ dashboard/ tests/
 
 markdownlint:
 	@echo "Linting markdown files..."
-	markdownlint README.md api/README.md CLAUDE.md
+	markdownlint README.md CLAUDE.md
 
 quality: format lint type-check markdownlint
 	@echo "All quality checks completed!"
@@ -220,7 +220,7 @@ api-install:
 
 api-test:
 	@echo "Running API tests..."
-	poetry run pytest api/tests/ -v
+	poetry run pytest tests/ -v
 
 api-run:
 	@echo "Starting API server..."

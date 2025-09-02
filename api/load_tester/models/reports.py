@@ -256,7 +256,7 @@ def format_report_as_markdown(report: LoadTestReport) -> str:
 ## Execution Timeline
 - **Started**: {report.started_at.isoformat() if report.started_at else "N/A"}
 - **Stopped**: {report.stopped_at.isoformat() if report.stopped_at else "N/A"}
-- **Duration**: {report.duration_seconds:.1f}s
+- **Duration**: {f"{report.duration_seconds:.1f}s" if report.duration_seconds is not None else "N/A"}
 
 ## Performance Metrics
 - **Total Requests**: {report.stats.total_requests:,}

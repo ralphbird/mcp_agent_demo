@@ -15,6 +15,15 @@ services:
     environment:
       - PYTHONPATH=/app
       - DATABASE_URL=sqlite:///currency_demo.db
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        labels: "service,version"
+    labels:
+      - "service=currency-api"
+      - "version=0.1.0"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
@@ -43,6 +52,15 @@ services:
       - DATABASE_URL=sqlite:///currency_demo.db
       - API_BASE_URL=http://api:8000
       - LOAD_TESTER_URL=http://load-tester:8001
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        labels: "service,version"
+    labels:
+      - "service=dashboard"
+      - "version=0.1.0"
     depends_on:
       api:
         condition: service_healthy
@@ -71,6 +89,15 @@ services:
       - LOAD_TESTER_TARGET_API_BASE_URL=http://api:8000
       - LOAD_TESTER_API_HOST=0.0.0.0
       - LOAD_TESTER_API_PORT=8001
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        labels: "service,version"
+    labels:
+      - "service=load-tester"
+      - "version=0.1.0"
     depends_on:
       api:
         condition: service_healthy
@@ -123,6 +150,35 @@ services:
     networks:
       - currency-network
 
+  # Loki for log aggregation
+  loki:
+    image: grafana/loki:latest
+    container_name: currency-loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./docker/loki:/etc/loki:ro
+      - loki_data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    restart: unless-stopped
+    networks:
+      - currency-network
+
+  # Promtail for log shipping
+  promtail:
+    image: grafana/promtail:latest
+    container_name: currency-promtail
+    volumes:
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - ./docker/promtail:/etc/promtail:ro
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
+    restart: unless-stopped
+    networks:
+      - currency-network
+
   # Optional: Grafana for metrics visualization
   grafana:
     image: grafana/grafana:latest
@@ -138,6 +194,7 @@ services:
       - GF_USERS_ALLOW_SIGN_UP=false
     depends_on:
       - prometheus
+      - loki
     restart: unless-stopped
     networks:
       - currency-network
@@ -145,6 +202,7 @@ services:
 volumes:
   prometheus_data:
   grafana_data:
+  loki_data:
 
 networks:
   currency-network:

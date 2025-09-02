@@ -5,6 +5,7 @@ from contextlib import suppress
 from datetime import UTC, datetime
 from typing import ClassVar
 
+from load_tester.logging_config import get_logger
 from load_tester.middleware.metrics import record_load_test_start, record_load_test_stop
 from load_tester.models.load_test import (
     LoadTestConfig,
@@ -13,6 +14,8 @@ from load_tester.models.load_test import (
     LoadTestStatus,
 )
 from load_tester.services.load_generator import LoadGenerator
+
+logger = get_logger(__name__)
 
 
 class LoadTestManager:
@@ -54,13 +57,27 @@ class LoadTestManager:
         Raises:
             RuntimeError: If load test is already running (use ramp_to_config instead)
         """
+        logger.info(
+            f"Starting load test with {config.requests_per_second} RPS",
+            extra={
+                "requests_per_second": config.requests_per_second,
+                "worker_count": len(config.currency_pairs) if config.currency_pairs else 0,
+                "currency_pairs_count": len(config.currency_pairs) if config.currency_pairs else 0,
+                "amounts_count": len(config.amounts) if config.amounts else 0,
+            },
+        )
+
         async with self._lock:
             if self._status in (LoadTestStatus.RUNNING, LoadTestStatus.STARTING):
                 msg = "Load test is already running"
+                logger.warning(
+                    f"Attempted to start load test but one is already running: {self._status}"
+                )
                 raise RuntimeError(msg)
 
             try:
                 self._status = LoadTestStatus.STARTING
+                logger.info("Load test status changed to STARTING")
                 self._config = config
                 self._stats = LoadTestStats()
                 self._started_at = datetime.now(UTC)

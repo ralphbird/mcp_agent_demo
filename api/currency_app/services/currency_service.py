@@ -4,12 +4,15 @@ from datetime import UTC, datetime
 from decimal import ROUND_HALF_EVEN, Decimal
 from typing import ClassVar
 
+from currency_app.logging_config import get_logger
 from currency_app.models.conversion import (
     ConversionRequest,
     ConversionResponse,
     RateInfo,
     RatesResponse,
 )
+
+logger = get_logger(__name__)
 
 
 class InvalidCurrencyError(Exception):
@@ -100,18 +103,65 @@ class CurrencyService:
         Raises:
             InvalidCurrencyError: If currencies are not supported
         """
-        # Validate currencies
-        from_currency = self.validate_currency(request.from_currency)
-        to_currency = self.validate_currency(request.to_currency)
+        logger.info(
+            f"Converting currency: {request.amount} {request.from_currency} -> {request.to_currency}",
+            extra={
+                "request_id": request.request_id,
+                "from_currency": request.from_currency,
+                "to_currency": request.to_currency,
+                "amount": str(request.amount),
+            },
+        )
 
-        # Get exchange rate
-        exchange_rate = self.get_exchange_rate(from_currency, to_currency)
+        try:
+            # Validate currencies
+            from_currency = self.validate_currency(request.from_currency)
+            to_currency = self.validate_currency(request.to_currency)
 
-        # Calculate converted amount
-        converted_amount = request.amount * exchange_rate
+            # Get exchange rate
+            exchange_rate = self.get_exchange_rate(from_currency, to_currency)
 
-        # Round to 2 decimal places for currency amounts (banker's rounding)
-        converted_amount = converted_amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_EVEN)
+            # Calculate converted amount
+            converted_amount = request.amount * exchange_rate
+
+            # Round to 2 decimal places for currency amounts (banker's rounding)
+            converted_amount = converted_amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_EVEN)
+
+            logger.info(
+                f"Currency conversion completed: {request.amount} {from_currency} = {converted_amount} {to_currency} (rate: {exchange_rate})",
+                extra={
+                    "request_id": request.request_id,
+                    "from_currency": from_currency,
+                    "to_currency": to_currency,
+                    "amount": str(request.amount),
+                    "converted_amount": str(converted_amount),
+                    "exchange_rate": str(exchange_rate),
+                },
+            )
+
+        except InvalidCurrencyError as e:
+            logger.warning(
+                f"Currency conversion failed - invalid currency: {e!s}",
+                extra={
+                    "request_id": request.request_id,
+                    "from_currency": request.from_currency,
+                    "to_currency": request.to_currency,
+                    "amount": str(request.amount),
+                },
+            )
+            raise
+        except Exception as e:
+            logger.error(
+                f"Currency conversion failed unexpectedly: {e!s}",
+                extra={
+                    "request_id": request.request_id,
+                    "from_currency": request.from_currency,
+                    "to_currency": request.to_currency,
+                    "amount": str(request.amount),
+                },
+                exc_info=True,
+            )
+            raise
 
         # Create response
         return ConversionResponse(

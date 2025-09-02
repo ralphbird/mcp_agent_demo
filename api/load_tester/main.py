@@ -4,16 +4,26 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Response
 
+from load_tester.logging_config import configure_logging, get_logger
+from load_tester.middleware.logging import LoggingMiddleware
 from load_tester.middleware.metrics import LoadTesterPrometheusMiddleware, get_load_tester_metrics
 from load_tester.routers import control
+
+# Configure logging at module level
+configure_logging()
+logger = get_logger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan events."""
     # Startup: Initialize load test state
+    logger.info("Starting Load Tester application")
+    logger.info("Load Tester application started successfully")
     yield
+
     # Shutdown: Ensure any running load tests are stopped
+    logger.info("Shutting down Load Tester application")
 
 
 # Create FastAPI application
@@ -24,7 +34,8 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Add Prometheus metrics middleware
+# Add middleware (order matters - logging should be first to capture all requests)
+app.add_middleware(LoggingMiddleware)
 app.add_middleware(LoadTesterPrometheusMiddleware)
 
 # Include routers

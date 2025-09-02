@@ -5,17 +5,33 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Response
 
 from currency_app.database import create_tables
+from currency_app.logging_config import configure_logging, get_logger
+from currency_app.middleware.logging import LoggingMiddleware
 from currency_app.middleware.metrics import PrometheusMiddleware, get_metrics
 from currency_app.routers import conversion, health, home, rates
+
+# Configure logging at module level
+configure_logging()
+logger = get_logger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan events."""
     # Startup: Create database tables
-    create_tables()
+    logger.info("Starting Currency API application")
+    try:
+        create_tables()
+        logger.info("Database tables created successfully")
+    except Exception:
+        logger.error("Failed to create database tables", exc_info=True)
+        raise
+
+    logger.info("Currency API application started successfully")
     yield
+
     # Shutdown: Could add cleanup here if needed
+    logger.info("Shutting down Currency API application")
 
 
 # Create FastAPI application
@@ -26,7 +42,8 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Add Prometheus metrics middleware
+# Add middleware (order matters - logging should be first to capture all requests)
+app.add_middleware(LoggingMiddleware)
 app.add_middleware(PrometheusMiddleware)
 
 # Include routers

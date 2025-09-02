@@ -9,6 +9,7 @@ import streamlit as st
 
 # API Configuration
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
+LOAD_TESTER_URL = os.getenv("LOAD_TESTER_URL", "http://localhost:8001")
 
 
 def get_current_rates():
@@ -111,6 +112,97 @@ def convert_rates_to_base(rates_data, target_base_currency):
     return {"rates": target_rates}
 
 
+# Load Testing API Functions
+def get_load_test_status():
+    """Get current load test status."""
+    try:
+        response = requests.get(f"{LOAD_TESTER_URL}/api/load-test/status", timeout=10)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        st.error(f"Failed to get load test status: {e}")
+        return None
+
+
+def get_load_test_scenarios():
+    """Get available load test scenarios."""
+    try:
+        response = requests.get(f"{LOAD_TESTER_URL}/api/load-test/scenarios", timeout=10)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        st.error(f"Failed to get scenarios: {e}")
+        return None
+
+
+def get_scenario_details(scenario):
+    """Get details for a specific scenario."""
+    try:
+        response = requests.get(f"{LOAD_TESTER_URL}/api/load-test/scenarios/{scenario}", timeout=10)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        st.error(f"Failed to get scenario details: {e}")
+        return None
+
+
+def start_load_test_scenario(scenario):
+    """Start a load test scenario."""
+    try:
+        response = requests.post(
+            f"{LOAD_TESTER_URL}/api/load-test/scenarios/{scenario}/start", timeout=10
+        )
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        st.error(f"Failed to start load test: {e}")
+        return None
+
+
+def start_custom_load_test(config):
+    """Start a custom load test."""
+    try:
+        payload = {"config": config}
+        response = requests.post(f"{LOAD_TESTER_URL}/api/load-test/start", json=payload, timeout=10)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        st.error(f"Failed to start custom load test: {e}")
+        return None
+
+
+def stop_load_test():
+    """Stop the current load test."""
+    try:
+        response = requests.post(f"{LOAD_TESTER_URL}/api/load-test/stop", timeout=10)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        st.error(f"Failed to stop load test: {e}")
+        return None
+
+
+def get_load_test_report():
+    """Get detailed load test report."""
+    try:
+        response = requests.get(f"{LOAD_TESTER_URL}/api/load-test/report", timeout=10)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        st.error(f"Failed to get load test report: {e}")
+        return None
+
+
+def check_load_tester_health():
+    """Check if load tester service is healthy."""
+    try:
+        response = requests.get(f"{LOAD_TESTER_URL}/", timeout=5)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException:
+        return None
+
+
 def main():
     """Main Streamlit application."""
     st.set_page_config(
@@ -134,7 +226,7 @@ def main():
     st.sidebar.title("Navigation")
     page = st.sidebar.selectbox(
         "Choose a page",
-        ["Currency Converter", "Exchange Rates", "Historical Trends"],
+        ["Currency Converter", "Exchange Rates", "Historical Trends", "Load Testing"],
     )
 
     if page == "Currency Converter":
@@ -143,6 +235,8 @@ def main():
         show_rates_page()
     elif page == "Historical Trends":
         show_historical_trends_page()
+    elif page == "Load Testing":
+        show_load_testing_page()
 
 
 def show_converter_page():
@@ -495,6 +589,283 @@ def show_historical_trends_page():
     # Note about data
     st.info(
         "📊 Historical data is simulated for demonstration purposes. In a production system, this would connect to real exchange rate data sources."
+    )
+
+
+def show_load_testing_page():
+    """Show the load testing control and monitoring page."""
+    st.header("🔥 Load Testing Dashboard")
+
+    # Check load tester health
+    load_tester_health = check_load_tester_health()
+    if not load_tester_health:
+        st.error("❌ Load Tester service is not accessible")
+        st.info("Make sure the Load Tester service is running at http://localhost:8001")
+        return
+
+    st.success(
+        f"✅ Load Tester service is healthy - {load_tester_health.get('message', 'Unknown')}"
+    )
+
+    # Get current test status
+    status = get_load_test_status()
+    if not status:
+        return
+
+    # Display current status
+    st.subheader("📊 Current Test Status")
+
+    status_color = {
+        "idle": "🟢",
+        "starting": "🟡",
+        "running": "🔴",
+        "stopping": "🟡",
+        "stopped": "🟠",
+        "error": "❌",
+    }.get(status["status"], "⚪")
+
+    st.info(f"{status_color} **Status**: {status['status'].upper()}")
+
+    # Real-time test information
+    if status["status"] in ["running", "starting", "stopping"]:
+        if status.get("config"):
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Target RPS", status["config"]["requests_per_second"])
+            with col2:
+                st.metric("Currency Pairs", len(status["config"]["currency_pairs"]))
+            with col3:
+                st.metric("Test Amounts", len(status["config"]["amounts"]))
+
+        # Live statistics
+        if status.get("stats"):
+            st.subheader("📈 Live Statistics")
+            col1, col2, col3, col4 = st.columns(4)
+
+            with col1:
+                st.metric("Total Requests", status["stats"]["total_requests"])
+            with col2:
+                success_rate = (
+                    status["stats"]["successful_requests"]
+                    / max(status["stats"]["total_requests"], 1)
+                ) * 100
+                st.metric("Success Rate", f"{success_rate:.1f}%")
+            with col3:
+                st.metric("Avg Response Time", f"{status['stats']['avg_response_time_ms']:.1f}ms")
+            with col4:
+                st.metric("Current RPS", f"{status['stats']['requests_per_second']:.2f}")
+
+        # Auto-refresh for running tests
+        if status["status"] == "running":
+            st.rerun()
+
+    # Control Panel
+    st.subheader("🎮 Test Control Panel")
+
+    if status["status"] in ["running", "starting", "stopping"]:
+        # Show stop button for active tests
+        if st.button("🛑 Stop Load Test", type="primary"):
+            result = stop_load_test()
+            if result:
+                st.success("Load test stopped successfully!")
+                st.rerun()
+    else:
+        # Show start options for inactive tests
+        tab1, tab2 = st.tabs(["📋 Scenario Tests", "⚙️ Custom Test"])
+
+        with tab1:
+            st.markdown("**Choose from predefined load test scenarios:**")
+
+            scenarios = get_load_test_scenarios()
+            if scenarios:
+                # Create scenario cards
+                scenario_names = list(scenarios.keys())
+                selected_scenario = st.selectbox(
+                    "Select Load Test Scenario",
+                    scenario_names,
+                    help="Choose a predefined scenario with optimized settings",
+                )
+
+                if selected_scenario:
+                    # Get scenario details
+                    scenario_details = get_scenario_details(selected_scenario)
+                    if scenario_details:
+                        # Display scenario information
+                        st.info(
+                            f"📖 **{scenario_details['name']}**\n\n{scenario_details['description']}"
+                        )
+
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.metric(
+                                "Target RPS", scenario_details["config"]["requests_per_second"]
+                            )
+                        with col2:
+                            st.metric(
+                                "Recommended Duration", f"{scenario_details['duration_seconds']}s"
+                            )
+                        with col3:
+                            st.metric(
+                                "Currency Pairs", len(scenario_details["config"]["currency_pairs"])
+                            )
+
+                        st.markdown(
+                            f"**Expected Behavior:** {scenario_details['expected_behavior']}"
+                        )
+
+                        # Start scenario button
+                        if st.button(f"🚀 Start {scenario_details['name']}", type="primary"):
+                            result = start_load_test_scenario(selected_scenario)
+                            if result:
+                                st.success(f"Started {scenario_details['name']} successfully!")
+                                st.rerun()
+
+        with tab2:
+            st.markdown("**Configure a custom load test:**")
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                custom_rps = st.slider(
+                    "Requests per Second",
+                    min_value=0.1,
+                    max_value=50.0,
+                    value=5.0,
+                    step=0.1,
+                    help="Number of requests to send per second",
+                )
+
+                currency_pairs = st.multiselect(
+                    "Currency Pairs",
+                    [
+                        "USD_EUR",
+                        "USD_GBP",
+                        "EUR_GBP",
+                        "USD_JPY",
+                        "USD_CAD",
+                        "USD_AUD",
+                        "USD_CHF",
+                        "USD_CNY",
+                        "USD_SEK",
+                        "USD_NZD",
+                    ],
+                    default=["USD_EUR", "USD_GBP"],
+                    help="Currency pairs to test",
+                )
+
+            with col2:
+                amounts = st.multiselect(
+                    "Test Amounts",
+                    [10.0, 50.0, 100.0, 250.0, 500.0, 1000.0, 2500.0, 5000.0],
+                    default=[100.0, 500.0, 1000.0],
+                    help="Transaction amounts to test",
+                )
+
+            if currency_pairs and amounts and st.button("🚀 Start Custom Test", type="primary"):
+                custom_config = {
+                    "requests_per_second": custom_rps,
+                    "currency_pairs": currency_pairs,
+                    "amounts": amounts,
+                }
+                result = start_custom_load_test(custom_config)
+                if result:
+                    st.success("Custom load test started successfully!")
+                    st.rerun()
+
+    # Test Results and Analysis
+    st.subheader("📊 Test Analysis & Results")
+
+    if status["status"] in ["stopped", "error"] or st.button("🔄 Refresh Report"):
+        report = get_load_test_report()
+        if report and report.get("stats", {}).get("total_requests", 0) > 0:
+            # Performance Grade
+            grade_color = {"A": "🟢", "B": "🟡", "C": "🟠", "D": "🔴", "F": "⚫"}.get(
+                report["performance_grade"], "⚪"
+            )
+
+            st.success(f"{grade_color} **Performance Grade: {report['performance_grade']}**")
+
+            # Key Metrics
+            col1, col2, col3, col4 = st.columns(4)
+
+            with col1:
+                st.metric("Total Requests", f"{report['stats']['total_requests']:,}")
+            with col2:
+                st.metric("Success Rate", f"{report['success_rate']:.1f}%")
+            with col3:
+                st.metric("Avg Response Time", f"{report['stats']['avg_response_time_ms']:.1f}ms")
+            with col4:
+                st.metric("Achieved RPS", f"{report['avg_rps_achieved']:.2f}")
+
+            # Performance Chart
+            if report["stats"]["total_requests"] > 0:
+                chart_data = pd.DataFrame(
+                    {
+                        "Metric": ["Successful", "Failed"],
+                        "Count": [
+                            report["stats"]["successful_requests"],
+                            report["stats"]["failed_requests"],
+                        ],
+                        "Percentage": [report["success_rate"], 100 - report["success_rate"]],
+                    }
+                )
+
+                fig = px.pie(
+                    chart_data,
+                    values="Count",
+                    names="Metric",
+                    title="Request Success/Failure Distribution",
+                    color_discrete_map={"Successful": "#28a745", "Failed": "#dc3545"},
+                )
+                st.plotly_chart(fig, use_container_width=True)
+
+            # Recommendations
+            if report.get("recommendations"):
+                st.subheader("💡 Performance Recommendations")
+                for i, rec in enumerate(report["recommendations"], 1):
+                    st.info(f"**{i}.** {rec}")
+
+            # Detailed Stats
+            with st.expander("📋 Detailed Statistics"):
+                stats_data = {
+                    "Metric": [
+                        "Total Requests",
+                        "Successful Requests",
+                        "Failed Requests",
+                        "Average Response Time",
+                        "Minimum Response Time",
+                        "Maximum Response Time",
+                        "Target RPS",
+                        "Achieved RPS",
+                    ],
+                    "Value": [
+                        f"{report['stats']['total_requests']:,}",
+                        f"{report['stats']['successful_requests']:,}",
+                        f"{report['stats']['failed_requests']:,}",
+                        f"{report['stats']['avg_response_time_ms']:.1f}ms",
+                        f"{report['stats']['min_response_time_ms']:.1f}ms",
+                        f"{report['stats']['max_response_time_ms']:.1f}ms",
+                        f"{report['requests_per_second']:.1f}",
+                        f"{report['avg_rps_achieved']:.2f}",
+                    ],
+                }
+                st.dataframe(pd.DataFrame(stats_data), use_container_width=True)
+        else:
+            st.info("No test results available. Run a load test to see performance analysis.")
+
+    # Quick Links
+    st.subheader("🔗 Quick Links")
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.markdown("[📋 Load Tester API Docs](http://localhost:8001/docs)")
+    with col2:
+        st.markdown("[📊 Load Tester Metrics](http://localhost:8001/metrics)")
+    with col3:
+        st.markdown("[🎯 Available Scenarios](http://localhost:8001/api/load-test/scenarios)")
+
+    st.info(
+        "💡 **Tip**: Load tests help identify performance bottlenecks and capacity limits. Use different scenarios to test various load patterns and system behavior."
     )
 
 

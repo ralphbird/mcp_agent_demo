@@ -42,8 +42,11 @@ services:
       - PYTHONPATH=/app
       - DATABASE_URL=sqlite:///currency_demo.db
       - API_BASE_URL=http://api:8000
+      - LOAD_TESTER_URL=http://load-tester:8001
     depends_on:
       api:
+        condition: service_healthy
+      load-tester:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]

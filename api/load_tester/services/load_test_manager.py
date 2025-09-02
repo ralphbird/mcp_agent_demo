@@ -52,7 +52,7 @@ class LoadTestManager:
             Load test response with current status
 
         Raises:
-            RuntimeError: If load test is already running
+            RuntimeError: If load test is already running (use ramp_to_config instead)
         """
         async with self._lock:
             if self._status in (LoadTestStatus.RUNNING, LoadTestStatus.STARTING):
@@ -84,6 +84,49 @@ class LoadTestManager:
                 self._status = LoadTestStatus.ERROR
                 self._error_message = str(e)
                 self._load_generator = None
+                return self._get_current_response()
+
+    async def ramp_to_config(self, config: LoadTestConfig) -> LoadTestResponse:
+        """Ramp the current load test to a new configuration without stopping.
+
+        Args:
+            config: New load test configuration to ramp to
+
+        Returns:
+            Load test response with updated status and configuration
+
+        Raises:
+            RuntimeError: If no load test is currently running
+        """
+        async with self._lock:
+            if self._status not in (LoadTestStatus.RUNNING, LoadTestStatus.STARTING):
+                msg = "No load test is currently running to ramp"
+                raise RuntimeError(msg)
+
+            if not self._load_generator:
+                msg = "Load generator not available for ramping"
+                raise RuntimeError(msg)
+
+            try:
+                # Record the old and new RPS for metrics
+                old_rps = self._config.requests_per_second if self._config else 0.0
+                new_rps = config.requests_per_second
+
+                # Update manager configuration
+                self._config = config
+                self._error_message = None
+
+                # Ramp the load generator to new configuration
+                await self._load_generator.ramp_to_config(config)
+
+                # Update metrics if RPS changed
+                if old_rps != new_rps:
+                    record_load_test_start(new_rps)  # Record new load level
+
+                return self._get_current_response()
+
+            except Exception as e:
+                self._error_message = f"Ramping failed: {e}"
                 return self._get_current_response()
 
     async def stop_load_test(self) -> LoadTestResponse:

@@ -89,15 +89,21 @@ class TestScenarioEndpoints:
         assert len(data["config"]["currency_pairs"]) == 4
 
     def test_start_scenario_already_running(self, client):
-        """Test starting scenario when another is already running."""
+        """Test starting scenario when another is already running ramps to new scenario."""
         # Start first scenario
         response = client.post("/api/load-test/scenarios/light/start")
         assert response.status_code == 200
+        first_data = response.json()
+        assert first_data["config"]["requests_per_second"] == 0.5
 
-        # Try to start another scenario
+        # Try to start another scenario - should ramp instead of fail
         response = client.post("/api/load-test/scenarios/moderate/start")
-        assert response.status_code == 409
-        assert "already running" in response.json()["detail"]
+        assert response.status_code == 200
+
+        # Should have ramped to moderate scenario configuration
+        second_data = response.json()
+        assert second_data["status"] == LoadTestStatus.RUNNING
+        assert second_data["config"]["requests_per_second"] == 5.0  # moderate scenario RPS
 
     def test_start_nonexistent_scenario(self, client):
         """Test starting nonexistent scenario."""

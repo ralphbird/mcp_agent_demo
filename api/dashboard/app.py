@@ -663,12 +663,148 @@ def show_load_testing_page():
     st.subheader("🎮 Test Control Panel")
 
     if status["status"] in ["running", "starting", "stopping"]:
-        # Show stop button for active tests
-        if st.button("🛑 Stop Load Test", type="primary"):
-            result = stop_load_test()
-            if result:
-                st.success("Load test stopped successfully!")
-                st.rerun()
+        # Show ramping and stop controls for active tests
+        st.info(
+            "💡 **Load Ramping**: You can seamlessly transition to different load levels without stopping the current test."
+        )
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            if st.button("🛑 Stop Load Test", type="secondary"):
+                result = stop_load_test()
+                if result:
+                    st.success("Load test stopped successfully!")
+                    st.rerun()
+
+        with col2:
+            # Show ramp controls
+            st.markdown("**🔄 Ramp to New Load Level:**")
+
+        # Ramping tabs
+        ramp_tab1, ramp_tab2 = st.tabs(["📋 Ramp to Scenario", "⚙️ Ramp to Custom"])
+
+        with ramp_tab1:
+            st.markdown("**Transition to a different scenario:**")
+            scenarios = get_load_test_scenarios()
+            if scenarios:
+                scenario_names = list(scenarios.keys())
+                ramp_scenario = st.selectbox(
+                    "Ramp to Scenario",
+                    scenario_names,
+                    key="ramp_scenario_select",
+                    help="Seamlessly transition to this scenario's load level",
+                )
+
+                if ramp_scenario:
+                    scenario_details = get_scenario_details(ramp_scenario)
+                    if scenario_details:
+                        current_rps = status.get("config", {}).get("requests_per_second", 0)
+                        target_rps = scenario_details["config"]["requests_per_second"]
+
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            st.metric("Current RPS", f"{current_rps}")
+                        with col2:
+                            st.metric("Target RPS", f"{target_rps}")
+
+                        ramp_direction = (
+                            "⬆️ Ramp Up"
+                            if target_rps > current_rps
+                            else "⬇️ Ramp Down"
+                            if target_rps < current_rps
+                            else "🔄 Update Config"
+                        )
+
+                        if st.button(
+                            f"{ramp_direction} to {scenario_details['name']}",
+                            type="primary",
+                            key="ramp_scenario_btn",
+                        ):
+                            result = start_load_test_scenario(
+                                ramp_scenario
+                            )  # This will now ramp instead of fail
+                            if result:
+                                st.success(f"Successfully ramped to {scenario_details['name']}!")
+                                st.rerun()
+
+        with ramp_tab2:
+            st.markdown("**Ramp to custom configuration:**")
+
+            col1, col2 = st.columns(2)
+            with col1:
+                current_config = status.get("config", {})
+                current_rps = current_config.get("requests_per_second", 5.0)
+
+                ramp_rps = st.slider(
+                    "Target Requests per Second",
+                    min_value=0.1,
+                    max_value=50.0,
+                    value=float(current_rps),
+                    step=0.1,
+                    help="New load level to ramp to",
+                    key="ramp_rps_slider",
+                )
+
+                ramp_currency_pairs = st.multiselect(
+                    "Currency Pairs",
+                    [
+                        "USD_EUR",
+                        "USD_GBP",
+                        "EUR_GBP",
+                        "USD_JPY",
+                        "USD_CAD",
+                        "USD_AUD",
+                        "USD_CHF",
+                        "USD_CNY",
+                        "USD_SEK",
+                        "USD_NZD",
+                    ],
+                    default=current_config.get("currency_pairs", ["USD_EUR", "USD_GBP"]),
+                    help="Update currency pairs to test",
+                    key="ramp_currency_pairs",
+                )
+
+            with col2:
+                ramp_amounts = st.multiselect(
+                    "Test Amounts",
+                    [10.0, 50.0, 100.0, 250.0, 500.0, 1000.0, 2500.0, 5000.0],
+                    default=current_config.get("amounts", [100.0, 500.0, 1000.0]),
+                    help="Update transaction amounts to test",
+                    key="ramp_amounts",
+                )
+
+                # Show ramping direction
+                ramp_direction = (
+                    "⬆️ Ramp Up"
+                    if ramp_rps > current_rps
+                    else "⬇️ Ramp Down"
+                    if ramp_rps < current_rps
+                    else "🔄 Update Config"
+                )
+                st.metric("Ramping Direction", ramp_direction)
+
+            if ramp_currency_pairs and ramp_amounts:
+                custom_ramp_config = {
+                    "requests_per_second": ramp_rps,
+                    "currency_pairs": ramp_currency_pairs,
+                    "amounts": ramp_amounts,
+                }
+
+                if st.button(
+                    f"🚀 {ramp_direction} (RPS: {current_rps} → {ramp_rps})",
+                    type="primary",
+                    key="ramp_custom_btn",
+                ):
+                    result = start_custom_load_test(
+                        custom_ramp_config
+                    )  # This will now ramp instead of fail
+                    if result:
+                        st.success(
+                            f"Successfully ramped load from {current_rps} to {ramp_rps} RPS!"
+                        )
+                        st.rerun()
+
     else:
         # Show start options for inactive tests
         tab1, tab2 = st.tabs(["📋 Scenario Tests", "⚙️ Custom Test"])

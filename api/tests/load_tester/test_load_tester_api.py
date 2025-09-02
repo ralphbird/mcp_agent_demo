@@ -91,15 +91,28 @@ class TestLoadTesterEndpoints:
         assert data["config"]["amounts"] == [100.0, 500.0]
 
     def test_start_load_test_already_running(self, client):
-        """Test starting load test when already running returns 409."""
+        """Test starting load test when already running ramps to new config."""
         # Start first load test
         response = client.post("/api/load-test/start", json={})
         assert response.status_code == 200
+        original_config = response.json()["config"]
 
-        # Try to start another one
-        response = client.post("/api/load-test/start", json={})
-        assert response.status_code == 409
-        assert "Load test is already running" in response.json()["detail"]
+        # Try to start another one with different config - should ramp instead of fail
+        new_config_request = {
+            "config": {
+                "requests_per_second": 5.0,
+                "currency_pairs": ["USD_EUR", "USD_GBP"],
+                "amounts": [100.0, 200.0],
+            }
+        }
+        response = client.post("/api/load-test/start", json=new_config_request)
+        assert response.status_code == 200
+
+        # Should have ramped to new configuration
+        new_data = response.json()
+        assert new_data["status"] == "running"
+        assert new_data["config"]["requests_per_second"] == 5.0
+        assert new_data["config"] != original_config
 
     def test_stop_load_test(self, client):
         """Test stopping a running load test."""

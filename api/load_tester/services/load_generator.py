@@ -125,11 +125,59 @@ class LoadGenerator:
                 requests_per_second=self.stats.requests_per_second,
             )
 
-    async def _generate_load_worker(self, interval: float) -> None:
+    async def ramp_to_config(self, new_config: LoadTestConfig) -> None:
+        """Ramp load to a new configuration without stopping the test.
+
+        Args:
+            new_config: New load test configuration to ramp to
+        """
+        if not self.is_running:
+            msg = "Cannot ramp load - generator is not running"
+            raise RuntimeError(msg)
+
+        old_rps = self.config.requests_per_second
+        new_rps = new_config.requests_per_second
+
+        # Update configuration (currency patterns and amounts can change immediately)
+        self.config = new_config
+        self.currency_patterns = CurrencyPatterns()
+
+        # If RPS is the same, no need to adjust tasks
+        if old_rps == new_rps:
+            return
+
+        # Calculate new task configuration
+        new_interval = 1.0 / new_rps
+        new_task_count = max(1, int(new_rps))
+        current_task_count = len(self._tasks)
+
+        if new_task_count > current_task_count:
+            # Scale up: add more tasks
+            for _ in range(new_task_count - current_task_count):
+                task = asyncio.create_task(self._generate_load_worker(new_interval))
+                self._tasks.append(task)
+        elif new_task_count < current_task_count:
+            # Scale down: cancel excess tasks
+            tasks_to_cancel = self._tasks[new_task_count:]
+            for task in tasks_to_cancel:
+                if not task.done():
+                    task.cancel()
+
+            # Wait for cancelled tasks to finish
+            if tasks_to_cancel:
+                await asyncio.gather(*tasks_to_cancel, return_exceptions=True)
+
+            # Keep only the required number of tasks
+            self._tasks = self._tasks[:new_task_count]
+
+        # Note: Existing tasks will naturally adjust to the new interval via their next sleep cycle
+        # This provides gradual ramping rather than immediate step changes
+
+    async def _generate_load_worker(self, initial_interval: float) -> None:
         """Worker coroutine that generates load at specified interval.
 
         Args:
-            interval: Time interval between requests in seconds
+            initial_interval: Initial time interval between requests in seconds
         """
         if not hasattr(self, "_start_time"):
             self._start_time = time.time()
@@ -151,8 +199,11 @@ class LoadGenerator:
                     to_currency=to_curr if isinstance(to_curr, str) else None,
                 )
 
+                # Calculate current interval from config (allows for dynamic ramping)
+                current_interval = 1.0 / max(self.config.requests_per_second, 0.1)
+
                 # Wait for next request interval
-                await asyncio.sleep(interval)
+                await asyncio.sleep(current_interval)
 
             except asyncio.CancelledError:
                 break
@@ -164,7 +215,10 @@ class LoadGenerator:
                     error_message="Unexpected worker error",
                 )
                 await self._update_stats(error_result)
-                await asyncio.sleep(interval)
+
+                # Use current interval for error sleep as well
+                current_interval = 1.0 / max(self.config.requests_per_second, 0.1)
+                await asyncio.sleep(current_interval)
 
     async def _execute_single_request(self) -> tuple[LoadGenerationResult, dict[str, str | float]]:
         """Execute a single currency conversion request.

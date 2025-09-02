@@ -23,6 +23,9 @@ router = APIRouter(prefix="/api/load-test", tags=["load-test"])
 async def start_load_test(request: StartLoadTestRequest) -> LoadTestResponse:
     """Start a load test with the specified configuration.
 
+    If a load test is already running, this will attempt to ramp to the new configuration
+    instead of failing, providing seamless load transitions.
+
     Args:
         request: Load test start request with configuration
 
@@ -30,11 +33,63 @@ async def start_load_test(request: StartLoadTestRequest) -> LoadTestResponse:
         Load test response with status and configuration
 
     Raises:
-        HTTPException: If load test is already running
+        HTTPException: If starting or ramping fails
     """
     manager = LoadTestManager()
     try:
+        # First try to start normally
         return await manager.start_load_test(request.config)
+    except RuntimeError as e:
+        if "already running" in str(e).lower():
+            # If test is already running, try ramping instead
+            try:
+                return await manager.ramp_to_config(request.config)
+            except RuntimeError as ramp_error:
+                raise HTTPException(status_code=409, detail=str(ramp_error)) from ramp_error
+        else:
+            # Other runtime errors should still fail
+            raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.post("/ramp")
+async def ramp_load_test(request: StartLoadTestRequest) -> LoadTestResponse:
+    """Ramp the currently running load test to a new configuration.
+
+    Args:
+        request: Load test request with new configuration to ramp to
+
+    Returns:
+        Load test response with updated status and configuration
+
+    Raises:
+        HTTPException: If no load test is running or ramping fails
+    """
+    manager = LoadTestManager()
+    try:
+        return await manager.ramp_to_config(request.config)
+    except RuntimeError as e:
+        raise HTTPException(status_code=409, detail=str(e)) from e
+
+
+@router.post("/scenarios/{scenario}/ramp")
+async def ramp_to_scenario(scenario: LoadTestScenario) -> LoadTestResponse:
+    """Ramp the currently running load test to a scenario configuration.
+
+    Args:
+        scenario: The load test scenario to ramp to
+
+    Returns:
+        Load test response with updated status and configuration
+
+    Raises:
+        HTTPException: If scenario not found, no test running, or ramping fails
+    """
+    try:
+        scenario_config = get_scenario_config(scenario)
+        manager = LoadTestManager()
+        return await manager.ramp_to_config(scenario_config.config)
+    except KeyError as e:
+        raise HTTPException(status_code=404, detail=f"Scenario '{scenario}' not found") from e
     except RuntimeError as e:
         raise HTTPException(status_code=409, detail=str(e)) from e
 
@@ -94,6 +149,9 @@ async def get_scenario(scenario: LoadTestScenario) -> ScenarioConfig:
 async def start_scenario_load_test(scenario: LoadTestScenario) -> LoadTestResponse:
     """Start a load test using a predefined scenario.
 
+    If a load test is already running, this will attempt to ramp to the scenario's
+    configuration instead of failing, providing seamless load transitions.
+
     Args:
         scenario: The load test scenario to run
 
@@ -101,12 +159,21 @@ async def start_scenario_load_test(scenario: LoadTestScenario) -> LoadTestRespon
         Load test response with status and configuration
 
     Raises:
-        HTTPException: If scenario not found or load test already running
+        HTTPException: If scenario not found or starting/ramping fails
     """
     try:
         scenario_config = get_scenario_config(scenario)
         manager = LoadTestManager()
-        return await manager.start_load_test(scenario_config.config)
+
+        # First try to start normally
+        try:
+            return await manager.start_load_test(scenario_config.config)
+        except RuntimeError as e:
+            if "already running" in str(e).lower():
+                # If test is already running, try ramping instead
+                return await manager.ramp_to_config(scenario_config.config)
+            raise
+
     except KeyError as e:
         raise HTTPException(status_code=404, detail=f"Scenario '{scenario}' not found") from e
     except RuntimeError as e:

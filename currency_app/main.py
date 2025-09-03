@@ -5,14 +5,13 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Response
 
 from currency_app.database import create_tables
-from currency_app.logging_config import configure_logging, get_logger
+from currency_app.logging_config import get_logger
 from currency_app.middleware.logging import LoggingMiddleware
 from currency_app.middleware.metrics import PrometheusMiddleware, get_metrics
 from currency_app.routers import conversion, health, home, rates
 from currency_app.tracing_config import configure_tracing, instrument_application
 
-# Configure logging at module level
-configure_logging()
+# Structlog is configured automatically when logging_config is imported
 logger = get_logger(__name__)
 
 

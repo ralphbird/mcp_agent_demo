@@ -4,13 +4,12 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Response
 
-from load_tester.logging_config import configure_logging, get_logger
+from load_tester.logging_config import get_logger
 from load_tester.middleware.logging import LoggingMiddleware
 from load_tester.middleware.metrics import LoadTesterPrometheusMiddleware, get_load_tester_metrics
 from load_tester.routers import control
 
-# Configure logging at module level
-configure_logging()
+# Structlog is configured automatically when logging_config is imported
 logger = get_logger(__name__)
 
 

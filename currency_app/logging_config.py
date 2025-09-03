@@ -7,4 +7,3 @@ configure_structlog("currency-api")
 
 # Re-export get_logger
 __all__ = ["get_logger"]
-

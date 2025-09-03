@@ -1,4 +1,27 @@
 services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15
+    container_name: currency-postgres
+    environment:
+      - POSTGRES_DB=currency_db
+      - POSTGRES_USER=currency_user
+      - POSTGRES_PASSWORD=currency_pass
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U currency_user -d currency_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - currency-network
+
   # FastAPI Currency Conversion API
   api:
     build:
@@ -10,11 +33,9 @@ services:
     volumes:
       # Persistent database storage
       - ./data:/app/data
-      # Mount the main database for development
-      - ./currency_demo.db:/app/currency_demo.db
     environment:
       - PYTHONPATH=/app
-      - DATABASE_URL=sqlite:///currency_demo.db
+      - DATABASE_URL=postgresql://currency_user:currency_pass@postgres:5432/currency_db
       - JAEGER_ENDPOINT=http://jaeger:4317
     logging:
       driver: "json-file"
@@ -25,6 +46,9 @@ services:
     labels:
       - "service=currency-api"
       - "version=0.1.0"
+    depends_on:
+      postgres:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
@@ -46,11 +70,9 @@ services:
     volumes:
       # Persistent database storage
       - ./data:/app/data
-      # Mount the main database for development
-      - ./currency_demo.db:/app/currency_demo.db
     environment:
       - PYTHONPATH=/app
-      - DATABASE_URL=sqlite:///currency_demo.db
+      - DATABASE_URL=postgresql://currency_user:currency_pass@postgres:5432/currency_db
       - API_BASE_URL=http://api:8000
       - LOAD_TESTER_URL=http://load-tester:8001
     logging:
@@ -63,6 +85,8 @@ services:
       - "service=dashboard"
       - "version=0.1.0"
     depends_on:
+      postgres:
+        condition: service_healthy
       api:
         condition: service_healthy
       load-tester:
@@ -221,6 +245,7 @@ services:
       - currency-network
 
 volumes:
+  postgres_data:
   prometheus_data:
   grafana_data:
   loki_data:

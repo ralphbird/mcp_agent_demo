@@ -6,11 +6,12 @@ interactive dashboard, and comprehensive monitoring capabilities.
 ## ✨ What This System Provides
 
 🏦 **Currency Conversion Service**: Convert between 10 major currencies with simulated
-real-time rates
+real-time rates and PostgreSQL persistence
 📊 **Interactive Web Dashboard**: Streamlit-based interface for currency conversion and
 rate visualization
 🔥 **Load Testing Platform**: Built-in load testing service to validate API performance
 📈 **Production Monitoring**: Prometheus metrics with Grafana dashboards and distributed tracing
+🐘 **PostgreSQL Database**: Production-ready database with connection pooling and data persistence
 
 ## 🚀 Quick Start (Docker - Recommended)
 
@@ -37,6 +38,7 @@ This will start all services and you'll see:
    💰 API: http://localhost:8000
    📊 Dashboard: http://localhost:8501
    🔥 Load Tester: http://localhost:8001
+   🐘 PostgreSQL: localhost:5432 (currency_user/currency_pass)
    📈 Prometheus: http://localhost:9090
    📉 Grafana: http://localhost:3000 (admin/admin)
    🔍 Jaeger: http://localhost:16686
@@ -47,8 +49,9 @@ This will start all services and you'll see:
 - **Currency API** at <http://localhost:8000> with interactive docs at `/docs`
 - **Web Dashboard** at <http://localhost:8501> for conversions and charts
 - **Load Tester** at <http://localhost:8001> for performance testing
+- **PostgreSQL Database** at localhost:5432 with persistent data storage
 - **Monitoring Stack** with Prometheus, Grafana, and Jaeger for observability
-- **30+ days of demo data** automatically generated
+- **30+ days of demo data** automatically generated in PostgreSQL
 
 ### 🐳 Docker Commands
 
@@ -93,6 +96,14 @@ make clean    # Clean all Docker resources
 - **Docker Deployment**: Complete containerization with orchestration and persistent storage
 - **Configuration Management**: Environment-based settings with validation
 
+### Database Architecture
+
+- **Production Database**: PostgreSQL 15 with connection pooling (10 base + 20 overflow connections)
+- **Data Persistence**: Volume-backed storage maintains data between container restarts
+- **ACID Compliance**: Full transaction support with proper isolation and consistency
+- **Testing Database**: SQLite for fast, isolated test execution (228+ tests)
+- **Auto-Initialization**: Database tables and demo data created automatically on startup
+
 ### Monitoring & Observability
 
 - **Distributed Tracing**: OpenTelemetry integration with Jaeger for end-to-end request tracing
@@ -104,7 +115,7 @@ make clean    # Clean all Docker resources
 
 ## 🛠️ Alternative Setup (Local Development)
 
-If you prefer to run without Docker:
+If you prefer to run without Docker (uses SQLite for development, PostgreSQL available via Docker):
 
 ### Local Development Prerequisites
 
@@ -283,16 +294,22 @@ mcp_agent_demo/
 
 ## 🧪 Testing
 
-The project includes comprehensive tests with 228+ test cases:
+The project includes comprehensive tests with 228+ test cases using SQLite for fast execution:
 
 ```bash
-# Run all tests
+# Run all tests (uses SQLite for speed)
 make test
 
 # Run specific test modules
 poetry run pytest tests/currency_app/ -v        # Currency conversion tests
 poetry run pytest tests/load_tester/ -v         # Load testing tests
 ```
+
+**Database Testing Strategy**:
+
+- **Local Tests**: Use SQLite with isolated databases per test file for speed
+- **Docker Production**: Uses PostgreSQL with full ACID compliance and persistence
+- **Test Isolation**: Each test suite uses separate databases to prevent interference
 
 ## 🤝 Contributing
 

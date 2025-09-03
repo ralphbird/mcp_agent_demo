@@ -16,7 +16,7 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # Database Configuration
+    # Database Configuration (SQLite for local/tests, PostgreSQL via env var for Docker)
     database_url: str = "sqlite:///currency_demo.db"
 
     # API Configuration

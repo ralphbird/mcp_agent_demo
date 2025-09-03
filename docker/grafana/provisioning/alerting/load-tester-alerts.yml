@@ -1,14 +1,14 @@
 apiVersion: 1
 
 groups:
-  - name: currency-api-alerts
+  - name: load-tester-alerts
     org_id: 1
-    folder: Currency API Alerts
+    folder: Load Tester Alerts
     interval: 30s
     rules:
-      # Critical: API Service Down
-      - uid: currency-api-down
-        title: Currency API Service Down
+      # Load Tester: Service Down
+      - uid: load-tester-down
+        title: Load Tester Service Down
         condition: C
         data:
           - refId: A
@@ -19,7 +19,7 @@ groups:
             datasourceUid: prometheus
             model:
               editorMode: code
-              expr: up{job="currency-api"}
+              expr: up{job="load-tester"}
               instant: true
               intervalMs: 1000
               legendFormat: __auto
@@ -58,17 +58,17 @@ groups:
         for: 30s
         keep_firing_for: 30s
         annotations:
-          description: "The Currency API service is not responding"
-          summary: "Currency API is down"
+          description: "Load tester service is not responding"
+          summary: "Load tester is down"
           severity: "critical"
         labels:
           severity: critical
         notification_settings:
           receiver: pagerduty-critical
 
-      # Critical: High Error Rate
-      - uid: currency-api-high-error-rate
-        title: Currency API High Error Rate
+      # Load Tester: High CPU Usage
+      - uid: load-tester-high-cpu
+        title: Load Tester High CPU Usage
         condition: C
         data:
           - refId: A
@@ -79,7 +79,189 @@ groups:
             datasourceUid: prometheus
             model:
               editorMode: code
-              expr: sum(rate(http_requests_total{job="currency-api",status_code=~"5.."}[5m])) / sum(rate(http_requests_total{job="currency-api"}[5m])) * 100
+              expr: |
+                rate(process_cpu_seconds_total{job="load-tester"}[5m]) * 100 > 90
+              instant: true
+              intervalMs: 1000
+              legendFormat: __auto
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: C
+            queryType: ""
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: "__expr__"
+            model:
+              conditions:
+                - evaluator:
+                    params: [1]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [C]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        noDataState: NoData
+        execErrState: Error
+        for: 5m
+        keep_firing_for: 30s
+        annotations:
+          description: "Load tester CPU usage is above 90% for 5 minutes"
+          summary: "High CPU usage in load tester"
+          severity: "warning"
+        labels:
+          severity: warning
+        notification_settings:
+          receiver: pagerduty-load-tester
+
+      # Load Tester: High Memory Usage
+      - uid: load-tester-high-memory
+        title: Load Tester High Memory Usage
+        condition: C
+        data:
+          - refId: A
+            queryType: ""
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              editorMode: code
+              expr: |
+                process_resident_memory_bytes{job="load-tester"} / (1024 * 1024 * 1024) > 2
+              instant: true
+              intervalMs: 1000
+              legendFormat: __auto
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: C
+            queryType: ""
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: "__expr__"
+            model:
+              conditions:
+                - evaluator:
+                    params: [1]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [C]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        noDataState: NoData
+        execErrState: Error
+        for: 5m
+        keep_firing_for: 30s
+        annotations:
+          description: "Load tester memory usage is above 2GB for 5 minutes"
+          summary: "High memory usage in load tester"
+          severity: "warning"
+        labels:
+          severity: warning
+        notification_settings:
+          receiver: pagerduty-load-tester
+
+      # Load Tester: High 4xx Error Rate
+      - uid: load-tester-high-4xx-rate
+        title: Load Tester High 4xx Error Rate
+        condition: C
+        data:
+          - refId: A
+            queryType: ""
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              editorMode: code
+              expr: sum(rate(http_requests_total{job="load-tester",status_code=~"4.."}[5m])) / sum(rate(http_requests_total{job="load-tester"}[5m])) * 100
+              instant: true
+              intervalMs: 1000
+              legendFormat: __auto
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: C
+            queryType: ""
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: "__expr__"
+            model:
+              conditions:
+                - evaluator:
+                    params: [10]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [C]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        noDataState: NoData
+        execErrState: Error
+        for: 3m
+        keep_firing_for: 30s
+        annotations:
+          description: "Load tester 4xx error rate is above 10% for 3 minutes"
+          summary: "High client error rate in load tester"
+          severity: "warning"
+        labels:
+          severity: warning
+        notification_settings:
+          receiver: pagerduty-load-tester
+
+      # Load Tester: High 5xx Error Rate
+      - uid: load-tester-high-5xx-rate
+        title: Load Tester High 5xx Error Rate
+        condition: C
+        data:
+          - refId: A
+            queryType: ""
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              editorMode: code
+              expr: sum(rate(http_requests_total{job="load-tester",status_code=~"5.."}[5m])) / sum(rate(http_requests_total{job="load-tester"}[5m])) * 100
               instant: true
               intervalMs: 1000
               legendFormat: __auto
@@ -118,314 +300,10 @@ groups:
         for: 2m
         keep_firing_for: 30s
         annotations:
-          description: "Currency API error rate is above 5% threshold"
-          summary: "High error rate detected in Currency API"
+          description: "Load tester 5xx error rate is above 5% for 2 minutes"
+          summary: "High server error rate in load tester"
           severity: "critical"
         labels:
           severity: critical
         notification_settings:
           receiver: pagerduty-critical
-
-      # Warning: High Request Rate
-      - uid: currency-api-high-request-rate
-        title: Currency API High Request Rate
-        condition: C
-        data:
-          - refId: A
-            queryType: ""
-            relativeTimeRange:
-              from: 600
-              to: 0
-            datasourceUid: prometheus
-            model:
-              editorMode: code
-              expr: sum(rate(http_requests_total{job="currency-api"}[5m]))
-              instant: true
-              intervalMs: 1000
-              legendFormat: __auto
-              maxDataPoints: 43200
-              range: false
-              refId: A
-          - refId: C
-            queryType: ""
-            relativeTimeRange:
-              from: 0
-              to: 0
-            datasourceUid: "__expr__"
-            model:
-              conditions:
-                - evaluator:
-                    params: [10]
-                    type: gt
-                  operator:
-                    type: and
-                  query:
-                    params: [C]
-                  reducer:
-                    params: []
-                    type: last
-                  type: query
-              datasource:
-                type: __expr__
-                uid: __expr__
-              expression: A
-              intervalMs: 1000
-              maxDataPoints: 43200
-              refId: C
-              type: threshold
-        noDataState: NoData
-        execErrState: Error
-        for: 5m
-        keep_firing_for: 30s
-        annotations:
-          description: "Currency API is receiving high request volume"
-          summary: "High request rate in Currency API"
-          severity: "warning"
-        labels:
-          severity: warning
-        notification_settings:
-          receiver: pagerduty-warning
-
-      # Resource Utilization: High CPU Usage
-      - uid: currency-api-high-cpu
-        title: Currency API High CPU Usage
-        condition: C
-        data:
-          - refId: A
-            queryType: ""
-            relativeTimeRange:
-              from: 600
-              to: 0
-            datasourceUid: prometheus
-            model:
-              editorMode: code
-              expr: |
-                rate(process_cpu_seconds_total{job="currency-api"}[5m]) * 100 > 80
-              instant: true
-              intervalMs: 1000
-              legendFormat: __auto
-              maxDataPoints: 43200
-              range: false
-              refId: A
-          - refId: C
-            queryType: ""
-            relativeTimeRange:
-              from: 0
-              to: 0
-            datasourceUid: "__expr__"
-            model:
-              conditions:
-                - evaluator:
-                    params: [1]
-                    type: gt
-                  operator:
-                    type: and
-                  query:
-                    params: [C]
-                  reducer:
-                    params: []
-                    type: last
-                  type: query
-              datasource:
-                type: __expr__
-                uid: __expr__
-              expression: A
-              intervalMs: 1000
-              maxDataPoints: 43200
-              refId: C
-              type: threshold
-        noDataState: NoData
-        execErrState: Error
-        for: 3m
-        keep_firing_for: 30s
-        annotations:
-          description: "Currency API CPU usage is above 80% for 3 minutes"
-          summary: "High CPU usage in Currency API"
-          severity: "warning"
-        labels:
-          severity: warning
-        notification_settings:
-          receiver: pagerduty-warning
-
-      # Resource Utilization: High Memory Usage
-      - uid: currency-api-high-memory
-        title: Currency API High Memory Usage
-        condition: C
-        data:
-          - refId: A
-            queryType: ""
-            relativeTimeRange:
-              from: 600
-              to: 0
-            datasourceUid: prometheus
-            model:
-              editorMode: code
-              expr: |
-                process_resident_memory_bytes{job="currency-api"} / (1024 * 1024 * 1024) > 1
-              instant: true
-              intervalMs: 1000
-              legendFormat: __auto
-              maxDataPoints: 43200
-              range: false
-              refId: A
-          - refId: C
-            queryType: ""
-            relativeTimeRange:
-              from: 0
-              to: 0
-            datasourceUid: "__expr__"
-            model:
-              conditions:
-                - evaluator:
-                    params: [1]
-                    type: gt
-                  operator:
-                    type: and
-                  query:
-                    params: [C]
-                  reducer:
-                    params: []
-                    type: last
-                  type: query
-              datasource:
-                type: __expr__
-                uid: __expr__
-              expression: A
-              intervalMs: 1000
-              maxDataPoints: 43200
-              refId: C
-              type: threshold
-        noDataState: NoData
-        execErrState: Error
-        for: 5m
-        keep_firing_for: 30s
-        annotations:
-          description: "Currency API memory usage is above 1GB for 5 minutes"
-          summary: "High memory usage in Currency API"
-          severity: "warning"
-        labels:
-          severity: warning
-        notification_settings:
-          receiver: pagerduty-warning
-
-      # Resource Utilization: High File Descriptor Usage
-      - uid: currency-api-high-fds
-        title: Currency API High File Descriptor Usage
-        condition: C
-        data:
-          - refId: A
-            queryType: ""
-            relativeTimeRange:
-              from: 600
-              to: 0
-            datasourceUid: prometheus
-            model:
-              editorMode: code
-              expr: |
-                (process_open_fds{job="currency-api"} / process_max_fds{job="currency-api"}) * 100 > 80
-              instant: true
-              intervalMs: 1000
-              legendFormat: __auto
-              maxDataPoints: 43200
-              range: false
-              refId: A
-          - refId: C
-            queryType: ""
-            relativeTimeRange:
-              from: 0
-              to: 0
-            datasourceUid: "__expr__"
-            model:
-              conditions:
-                - evaluator:
-                    params: [1]
-                    type: gt
-                  operator:
-                    type: and
-                  query:
-                    params: [C]
-                  reducer:
-                    params: []
-                    type: last
-                  type: query
-              datasource:
-                type: __expr__
-                uid: __expr__
-              expression: A
-              intervalMs: 1000
-              maxDataPoints: 43200
-              refId: C
-              type: threshold
-        noDataState: NoData
-        execErrState: Error
-        for: 2m
-        keep_firing_for: 30s
-        annotations:
-          description: "Currency API is using over 80% of available file descriptors"
-          summary: "High file descriptor usage in Currency API"
-          severity: "warning"
-        labels:
-          severity: warning
-        notification_settings:
-          receiver: pagerduty-warning
-
-      # Performance: 95th Percentile Response Time High
-      - uid: currency-api-p95-latency
-        title: Currency API P95 Response Time High
-        condition: C
-        data:
-          - refId: A
-            queryType: ""
-            relativeTimeRange:
-              from: 600
-              to: 0
-            datasourceUid: prometheus
-            model:
-              editorMode: code
-              expr: |
-                histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job="currency-api"}[5m])) by (le)) * 1000 > 2000
-              instant: true
-              intervalMs: 1000
-              legendFormat: __auto
-              maxDataPoints: 43200
-              range: false
-              refId: A
-          - refId: C
-            queryType: ""
-            relativeTimeRange:
-              from: 0
-              to: 0
-            datasourceUid: "__expr__"
-            model:
-              conditions:
-                - evaluator:
-                    params: [1]
-                    type: gt
-                  operator:
-                    type: and
-                  query:
-                    params: [C]
-                  reducer:
-                    params: []
-                    type: last
-                  type: query
-              datasource:
-                type: __expr__
-                uid: __expr__
-              expression: A
-              intervalMs: 1000
-              maxDataPoints: 43200
-              refId: C
-              type: threshold
-        noDataState: NoData
-        execErrState: Error
-        for: 2m
-        keep_firing_for: 30s
-        annotations:
-          description: "Currency API 95th percentile response time is above 2 seconds"
-          summary: "High response time in Currency API"
-          severity: "warning"
-        labels:
-          severity: warning
-        notification_settings:
-          receiver: pagerduty-warning

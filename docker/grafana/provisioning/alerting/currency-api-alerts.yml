@@ -64,7 +64,7 @@ groups:
         labels:
           severity: critical
         notification_settings:
-          receiver: pagerduty-critical-test
+          receiver: pagerduty-critical
 
       # Critical: High Error Rate
       - uid: currency-api-high-error-rate
@@ -124,7 +124,7 @@ groups:
         labels:
           severity: critical
         notification_settings:
-          receiver: pagerduty-critical-test
+          receiver: pagerduty-critical
 
       # Warning: High Request Rate
       - uid: currency-api-high-request-rate
@@ -184,4 +184,4 @@ groups:
         labels:
           severity: warning
         notification_settings:
-          receiver: pagerduty-critical-test
+          receiver: pagerduty-warning

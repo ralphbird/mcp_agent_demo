@@ -51,16 +51,17 @@ This will start all services and you'll see:
 - **Load Tester** at <http://localhost:8001> for performance testing
 - **PostgreSQL Database** at localhost:5432 with persistent data storage
 - **Monitoring Stack** with Prometheus, Grafana, and Jaeger for observability
+- **PagerDuty Alerting** for critical issue notifications (see `docs/PAGERDUTY_SETUP.md`)
 - **30+ days of demo data** automatically generated in PostgreSQL
 
 ### 🐳 Docker Commands
 
 ```bash
-make up       # Start all services
-make down     # Stop all services
-make logs     # View service logs
-make rebuild  # Rebuild and restart everything
-make clean    # Clean all Docker resources
+make up                        # Start all services
+make down                      # Stop all services
+make logs                      # View service logs
+make rebuild                   # Rebuild and restart everything
+make clean                     # Clean all Docker resources
 ```
 
 ## 🚀 Core Features
@@ -304,6 +305,17 @@ make test
 poetry run pytest tests/currency_app/ -v        # Currency conversion tests
 poetry run pytest tests/load_tester/ -v         # Load testing tests
 ```
+
+### PagerDuty Integration Testing
+
+Test the PagerDuty alerting integration:
+
+```bash
+# Test PagerDuty integration (requires .env configuration)
+set -a && source .env && set +a && poetry run python scripts/test_pagerduty.py
+```
+
+See `docs/PAGERDUTY_SETUP.md` for complete configuration and setup instructions.
 
 **Database Testing Strategy**:
 

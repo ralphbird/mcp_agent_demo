@@ -28,6 +28,8 @@ services:
       context: .
       target: api
     container_name: currency-api
+    env_file:
+      - .env
     ports:
       - "8000:8000"
     volumes:
@@ -37,6 +39,9 @@ services:
       - PYTHONPATH=/app
       - DATABASE_URL=postgresql://currency_user:currency_pass@postgres:5432/currency_db
       - JAEGER_ENDPOINT=http://jaeger:4317
+      # PagerDuty Integration Keys (loaded from .env or defaults)
+      - PAGERDUTY_CURRENCY_APP_KEY=${PAGERDUTY_CURRENCY_APP_KEY:-your-pagerduty-integration-key-here}
+      - PAGERDUTY_LOAD_TESTER_KEY=${PAGERDUTY_LOAD_TESTER_KEY:-${PAGERDUTY_CURRENCY_APP_KEY:-your-pagerduty-integration-key-here}}
     logging:
       driver: "json-file"
       options:
@@ -65,6 +70,8 @@ services:
       context: .
       target: dashboard
     container_name: currency-dashboard
+    env_file:
+      - .env
     ports:
       - "8501:8501"
     volumes:
@@ -75,6 +82,9 @@ services:
       - DATABASE_URL=postgresql://currency_user:currency_pass@postgres:5432/currency_db
       - API_BASE_URL=http://api:8000
       - LOAD_TESTER_URL=http://load-tester:8001
+      # PagerDuty Integration Keys (loaded from .env or defaults)
+      - PAGERDUTY_CURRENCY_APP_KEY=${PAGERDUTY_CURRENCY_APP_KEY:-your-pagerduty-integration-key-here}
+      - PAGERDUTY_LOAD_TESTER_KEY=${PAGERDUTY_LOAD_TESTER_KEY:-${PAGERDUTY_CURRENCY_APP_KEY:-your-pagerduty-integration-key-here}}
     logging:
       driver: "json-file"
       options:
@@ -107,6 +117,8 @@ services:
       context: .
       target: load-tester
     container_name: currency-load-tester
+    env_file:
+      - .env
     ports:
       - "8001:8001"
     environment:
@@ -115,6 +127,9 @@ services:
       - LOAD_TESTER_API_HOST=0.0.0.0
       - LOAD_TESTER_API_PORT=8001
       - JAEGER_ENDPOINT=http://jaeger:4317
+      # PagerDuty Integration Keys (loaded from .env or defaults)
+      - PAGERDUTY_CURRENCY_APP_KEY=${PAGERDUTY_CURRENCY_APP_KEY:-your-pagerduty-integration-key-here}
+      - PAGERDUTY_LOAD_TESTER_KEY=${PAGERDUTY_LOAD_TESTER_KEY:-${PAGERDUTY_CURRENCY_APP_KEY:-your-pagerduty-integration-key-here}}
     logging:
       driver: "json-file"
       options:
@@ -218,6 +233,12 @@ services:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
       - GF_USERS_ALLOW_SIGN_UP=false
+      # Alerting Configuration
+      - GF_ALERTING_ENABLED=true
+      - GF_UNIFIED_ALERTING_ENABLED=true
+      # PagerDuty Integration Keys (set these in your environment)
+      - PAGERDUTY_CURRENCY_APP_KEY=${PAGERDUTY_CURRENCY_APP_KEY:-your-pagerduty-integration-key-here}
+      - PAGERDUTY_LOAD_TESTER_KEY=${PAGERDUTY_LOAD_TESTER_KEY:-${PAGERDUTY_CURRENCY_APP_KEY:-your-pagerduty-integration-key-here}}
     depends_on:
       - prometheus
       - loki

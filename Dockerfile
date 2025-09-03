@@ -36,6 +36,7 @@ FROM base AS api
 COPY currency_app/ ./currency_app/
 COPY load_tester/ ./load_tester/
 COPY dashboard/ ./dashboard/
+COPY common/ ./common/
 COPY tests/ ./tests/
 COPY scripts/ ./scripts/
 COPY README.md ./
@@ -63,6 +64,7 @@ FROM base AS dashboard
 COPY currency_app/ ./currency_app/
 COPY load_tester/ ./load_tester/
 COPY dashboard/ ./dashboard/
+COPY common/ ./common/
 COPY tests/ ./tests/
 COPY scripts/ ./scripts/
 COPY README.md ./
@@ -90,6 +92,7 @@ FROM base AS load-tester
 COPY currency_app/ ./currency_app/
 COPY load_tester/ ./load_tester/
 COPY dashboard/ ./dashboard/
+COPY common/ ./common/
 COPY tests/ ./tests/
 COPY scripts/ ./scripts/
 COPY README.md ./

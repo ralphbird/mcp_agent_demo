@@ -27,10 +27,10 @@ make logs         # View service logs (Ctrl+C to exit)
 ### Docker Workflow
 
 ```bash
-make rebuild      # Rebuild containers and restart all services
-make clean        # Clean all Docker resources (images, volumes, containers)
-make test         # Run tests with coverage inside container
-make quality      # Run code quality checks (format, lint, type-check)
+make rebuild                   # Rebuild containers and restart all services
+make clean                     # Clean all Docker resources (images, volumes, containers)
+make test                      # Run tests with coverage inside container
+make quality                   # Run code quality checks (format, lint, type-check)
 ```
 
 ### Local Development (Alternative)
@@ -213,8 +213,24 @@ When running with `make` (Docker), these services are available:
 - **Load Tester API**: <http://localhost:8001> (Load testing service with docs at /docs)
 - **PostgreSQL Database**: localhost:5432 (Database server - currency_user/currency_pass)
 - **Prometheus**: <http://localhost:9090> (Metrics collection and querying)
-- **Grafana**: <http://localhost:3000> (Dashboards - login: admin/admin)
+- **Grafana**: <http://localhost:3000> (Dashboards and alerting - login: admin/admin)
 - **Jaeger**: <http://localhost:16686> (Distributed tracing UI)
+
+## PagerDuty Alerting
+
+The system includes comprehensive alerting integration with PagerDuty:
+
+- **Critical Alerts**: API down, high error rates, database issues
+- **Warning Alerts**: High latency, high traffic, load test failures
+- **Automated Notifications**: Real-time incident creation and resolution
+- **Setup Guide**: See `docs/PAGERDUTY_SETUP.md` for complete configuration
+
+**Quick Setup**:
+
+1. Copy `.env.example` to `.env`
+2. Set your `PAGERDUTY_CURRENCY_APP_KEY` in `.env`
+3. Run `make rebuild` to restart with alerting enabled
+4. Test integration: `set -a && source .env && set +a && poetry run python scripts/test_pagerduty.py`
 
 ## Distributed Tracing
 

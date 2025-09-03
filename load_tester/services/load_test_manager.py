@@ -57,26 +57,26 @@ class LoadTestManager:
         Raises:
             RuntimeError: If load test is already running (use ramp_to_config instead)
         """
-        logger.info(
-            f"Starting load test with {config.requests_per_second} RPS",
-            extra={
-                "requests_per_second": config.requests_per_second,
-                "currency_pairs_count": len(config.currency_pairs) if config.currency_pairs else 0,
-                "amounts_count": len(config.amounts) if config.amounts else 0,
-            },
+        # Bind load test context
+        load_test_logger = logger.bind(
+            requests_per_second=config.requests_per_second,
+            currency_pairs_count=len(config.currency_pairs) if config.currency_pairs else 0,
+            amounts_count=len(config.amounts) if config.amounts else 0,
         )
+
+        load_test_logger.info(f"Starting load test with {config.requests_per_second} RPS")
 
         async with self._lock:
             if self._status in (LoadTestStatus.RUNNING, LoadTestStatus.STARTING):
                 msg = "Load test is already running"
-                logger.warning(
+                load_test_logger.warning(
                     f"Attempted to start load test but one is already running: {self._status}"
                 )
                 raise RuntimeError(msg)
 
             try:
                 self._status = LoadTestStatus.STARTING
-                logger.info("Load test status changed to STARTING")
+                load_test_logger.info("Load test status changed to STARTING")
                 self._config = config
                 self._stats = LoadTestStats()
                 self._started_at = datetime.now(UTC)

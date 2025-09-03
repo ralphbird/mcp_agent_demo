@@ -5,7 +5,6 @@ import uuid
 from collections.abc import Callable
 
 from fastapi import Request, Response
-from opentelemetry import trace
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from currency_app.logging_config import get_logger
@@ -13,23 +12,8 @@ from currency_app.logging_config import get_logger
 logger = get_logger(__name__)
 
 
-def get_trace_context() -> dict[str, str]:
-    """Extract trace context for logging.
-
-    Returns:
-        Dictionary containing trace and span IDs
-    """
-    span_context = trace.get_current_span().get_span_context()
-    if span_context.is_valid:
-        return {
-            "trace_id": f"{span_context.trace_id:032x}",
-            "span_id": f"{span_context.span_id:016x}",
-        }
-    return {}
-
-
 class LoggingMiddleware(BaseHTTPMiddleware):
-    """Middleware to log HTTP requests and responses."""
+    """Middleware to log HTTP requests and responses using structlog context binding."""
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """Process request and log details.
@@ -50,25 +34,24 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         client_ip = self._get_client_ip(request)
         user_agent = request.headers.get("user-agent", "")
 
+        # Bind request context to logger for all subsequent logs in this request
+        request_logger = logger.bind(
+            request_id=request_id,
+            method=method,
+            endpoint=url,
+            client_ip=client_ip,
+            user_agent=user_agent,
+        )
+
         # Start timer
         start_time = time.time()
 
         # Log incoming request
-        trace_context = get_trace_context()
-        logger.info(
-            f"Incoming request: {method} {url}",
-            extra={
-                "request_id": request_id,
-                "method": method,
-                "endpoint": url,
-                "client_ip": client_ip,
-                "user_agent": user_agent,
-                **trace_context,
-            },
-        )
+        request_logger.info(f"Incoming request: {method} {url}")
 
-        # Add request ID to request state for use in route handlers
+        # Add request ID and logger to request state for use in route handlers
         request.state.request_id = request_id
+        request.state.logger = request_logger
 
         try:
             # Process request
@@ -77,18 +60,11 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             # Calculate response time
             response_time_ms = round((time.time() - start_time) * 1000, 2)
 
-            # Log response
-            logger.info(
+            # Log response with additional context
+            request_logger.info(
                 f"Request completed: {method} {url} - {response.status_code}",
-                extra={
-                    "request_id": request_id,
-                    "method": method,
-                    "endpoint": url,
-                    "status_code": response.status_code,
-                    "response_time_ms": response_time_ms,
-                    "client_ip": client_ip,
-                    **trace_context,
-                },
+                status_code=response.status_code,
+                response_time_ms=response_time_ms,
             )
 
             return response
@@ -97,17 +73,10 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             # Calculate response time for errors
             response_time_ms = round((time.time() - start_time) * 1000, 2)
 
-            # Log error
-            logger.error(
+            # Log error with additional context and exception info
+            request_logger.error(
                 f"Request failed: {method} {url} - {e!s}",
-                extra={
-                    "request_id": request_id,
-                    "method": method,
-                    "endpoint": url,
-                    "response_time_ms": response_time_ms,
-                    "client_ip": client_ip,
-                    **trace_context,
-                },
+                response_time_ms=response_time_ms,
                 exc_info=True,
             )
 

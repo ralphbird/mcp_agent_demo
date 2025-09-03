@@ -154,14 +154,16 @@ class CurrencyService:
             span.set_attribute("conversion.from_currency", request.from_currency)
             span.set_attribute("conversion.to_currency", request.to_currency)
 
-            logger.info(
-                f"Converting currency: {request.amount} {request.from_currency} -> {request.to_currency}",
-                extra={
-                    "request_id": request.request_id,
-                    "from_currency": request.from_currency,
-                    "to_currency": request.to_currency,
-                    "amount": str(request.amount),
-                },
+            # Bind context for this conversion operation
+            conversion_logger = logger.bind(
+                request_id=request.request_id,
+                from_currency=request.from_currency,
+                to_currency=request.to_currency,
+                amount=str(request.amount),
+            )
+
+            conversion_logger.info(
+                f"Converting currency: {request.amount} {request.from_currency} -> {request.to_currency}"
             )
 
             try:
@@ -190,16 +192,10 @@ class CurrencyService:
                 span.set_attribute("conversion.result.converted_amount", float(converted_amount))
                 span.set_attribute("conversion.status", "success")
 
-                logger.info(
+                conversion_logger.info(
                     f"Currency conversion completed: {request.amount} {from_currency} = {converted_amount} {to_currency} (rate: {exchange_rate})",
-                    extra={
-                        "request_id": request.request_id,
-                        "from_currency": from_currency,
-                        "to_currency": to_currency,
-                        "amount": str(request.amount),
-                        "converted_amount": str(converted_amount),
-                        "exchange_rate": str(exchange_rate),
-                    },
+                    converted_amount=str(converted_amount),
+                    exchange_rate=str(exchange_rate),
                 )
 
                 add_span_event(
@@ -219,15 +215,7 @@ class CurrencyService:
                     "conversion_failed", {"error_type": "invalid_currency", "error_message": str(e)}
                 )
 
-                logger.warning(
-                    f"Currency conversion failed - invalid currency: {e!s}",
-                    extra={
-                        "request_id": request.request_id,
-                        "from_currency": request.from_currency,
-                        "to_currency": request.to_currency,
-                        "amount": str(request.amount),
-                    },
-                )
+                conversion_logger.warning(f"Currency conversion failed - invalid currency: {e!s}")
                 raise
             except Exception as e:
                 span.set_attribute("conversion.status", "error")
@@ -238,14 +226,8 @@ class CurrencyService:
                     "conversion_failed", {"error_type": "unexpected", "error_message": str(e)}
                 )
 
-                logger.error(
+                conversion_logger.error(
                     f"Currency conversion failed unexpectedly: {e!s}",
-                    extra={
-                        "request_id": request.request_id,
-                        "from_currency": request.from_currency,
-                        "to_currency": request.to_currency,
-                        "amount": str(request.amount),
-                    },
                     exc_info=True,
                 )
                 raise

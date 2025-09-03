@@ -7,7 +7,8 @@ readme = "README.md"
 packages = [
     { include = "currency_app" },
     { include = "load_tester" },
-    { include = "dashboard" }
+    { include = "dashboard" },
+    { include = "common" }
 ]
 
 [tool.poetry.dependencies]
@@ -33,6 +34,7 @@ opentelemetry-instrumentation-sqlalchemy = "^0.47b0"
 opentelemetry-instrumentation-requests = "^0.47b0"
 opentelemetry-exporter-otlp = "^1.26.0"
 opentelemetry-semantic-conventions = "^0.47b0"
+structlog = "^24.4.0"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.12.11"

@@ -1,6 +1,7 @@
 """Async HTTP load generation engine for currency API testing."""
 
 import asyncio
+import random
 import time
 
 import aiohttp
@@ -239,8 +240,14 @@ class LoadGenerator:
             )
 
         try:
-            # Generate realistic request data
-            request_data = self.currency_patterns.generate_random_request()
+            # Generate request data (valid or invalid based on error injection settings)
+            if (
+                self.config.error_injection_enabled
+                and random.random() < self.config.error_injection_rate
+            ):
+                request_data = self.currency_patterns.generate_invalid_request()
+            else:
+                request_data = self.currency_patterns.generate_random_request()
 
             # Make HTTP request to currency conversion endpoint
             url = f"{settings.target_api_base_url}/api/v1/convert"

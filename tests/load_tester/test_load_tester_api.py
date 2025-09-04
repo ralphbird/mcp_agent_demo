@@ -325,3 +325,91 @@ class TestLoadTesterEndpoints:
         assert api_config["requests_per_second"] == model_config.requests_per_second
         assert api_config["currency_pairs"] == model_config.currency_pairs
         assert api_config["amounts"] == model_config.amounts
+
+    def test_start_simple_load_test_with_error_injection(self, client):
+        """Test starting simple load test with error injection enabled."""
+        response = client.post(
+            "/api/load-test/start/simple?requests_per_second=3.0&error_injection_enabled=true&error_injection_rate=0.10"
+        )
+        assert response.status_code == 200
+
+        data = response.json()
+        assert data["status"] == LoadTestStatus.RUNNING
+        config = data["config"]
+
+        # Should have error injection enabled
+        assert config["error_injection_enabled"] is True
+        assert config["error_injection_rate"] == 0.10
+        assert config["requests_per_second"] == 3.0
+
+        # Should still auto-configure pairs and amounts
+        assert len(config["currency_pairs"]) > 0
+        assert len(config["amounts"]) > 0
+
+    def test_start_simple_load_test_error_injection_defaults(self, client):
+        """Test simple load test uses error injection defaults when not specified."""
+        response = client.post("/api/load-test/start/simple?requests_per_second=2.0")
+        assert response.status_code == 200
+
+        data = response.json()
+        config = data["config"]
+
+        # Should use defaults for error injection
+        assert config["error_injection_enabled"] is False
+        assert config["error_injection_rate"] == 0.05
+
+    def test_start_simple_load_test_invalid_error_rate_low(self, client):
+        """Test simple load test rejects error rate too low."""
+        response = client.post(
+            "/api/load-test/start/simple?requests_per_second=2.0&error_injection_enabled=true&error_injection_rate=-0.1"
+        )
+        assert response.status_code == 422
+
+        error_detail = response.json()["detail"]
+        assert "error_injection_rate must be between 0.0 and 0.5" in error_detail
+
+    def test_start_simple_load_test_invalid_error_rate_high(self, client):
+        """Test simple load test rejects error rate too high."""
+        response = client.post(
+            "/api/load-test/start/simple?requests_per_second=2.0&error_injection_enabled=true&error_injection_rate=0.6"
+        )
+        assert response.status_code == 422
+
+        error_detail = response.json()["detail"]
+        assert "error_injection_rate must be between 0.0 and 0.5" in error_detail
+
+    def test_start_simple_load_test_error_injection_boundary_values(self, client):
+        """Test simple load test accepts boundary error injection values."""
+        # Test minimum valid error rate
+        response = client.post(
+            "/api/load-test/start/simple?requests_per_second=2.0&error_injection_enabled=true&error_injection_rate=0.0"
+        )
+        assert response.status_code == 200
+        config = response.json()["config"]
+        assert config["error_injection_rate"] == 0.0
+
+        # Stop current test
+        client.post("/api/load-test/stop")
+
+        # Test maximum valid error rate
+        response = client.post(
+            "/api/load-test/start/simple?requests_per_second=2.0&error_injection_enabled=true&error_injection_rate=0.5"
+        )
+        assert response.status_code == 200
+        config = response.json()["config"]
+        assert config["error_injection_rate"] == 0.5
+
+    def test_start_simple_error_injection_disabled_ignores_rate(self, client):
+        """Test that when error injection is disabled, rate parameter is ignored."""
+        response = client.post(
+            "/api/load-test/start/simple?requests_per_second=2.0&error_injection_enabled=false&error_injection_rate=0.25"
+        )
+        assert response.status_code == 200
+
+        data = response.json()
+        config = data["config"]
+
+        # Should have error injection disabled regardless of rate parameter
+        assert config["error_injection_enabled"] is False
+        # Rate should still be stored even if disabled
+        assert config["error_injection_rate"] == 0.25

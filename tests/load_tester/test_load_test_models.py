@@ -275,3 +275,81 @@ class TestLoadTestHelperFunctions:
         # Should include reasonable amount ranges
         assert any(100 <= amount <= 1000 for amount in amounts), "Should include mid-range amounts"
         assert any(amount >= 10000 for amount in amounts), "Should include large amounts"
+
+    def test_error_injection_defaults(self):
+        """Test LoadTestConfig error injection defaults."""
+        config = LoadTestConfig()
+
+        assert config.error_injection_enabled is False
+        assert config.error_injection_rate == 0.05
+
+    def test_error_injection_custom_values(self):
+        """Test LoadTestConfig with custom error injection values."""
+        config = LoadTestConfig(
+            error_injection_enabled=True,
+            error_injection_rate=0.15,
+        )
+
+        assert config.error_injection_enabled is True
+        assert config.error_injection_rate == 0.15
+
+    def test_error_injection_rate_validation(self):
+        """Test error injection rate validation."""
+        # Valid rates should work
+        config = LoadTestConfig(error_injection_rate=0.0)
+        assert config.error_injection_rate == 0.0
+
+        config = LoadTestConfig(error_injection_rate=0.25)
+        assert config.error_injection_rate == 0.25
+
+        config = LoadTestConfig(error_injection_rate=0.5)
+        assert config.error_injection_rate == 0.5
+
+        # Invalid rates should raise ValidationError
+        with pytest.raises(ValueError):
+            LoadTestConfig(error_injection_rate=-0.1)  # Negative
+
+        with pytest.raises(ValueError):
+            LoadTestConfig(error_injection_rate=0.6)  # Greater than 0.5
+
+    def test_create_full_config_with_error_injection(self):
+        """Test create_full_config with error injection parameters."""
+        config = LoadTestConfig.create_full_config(
+            requests_per_second=10.0,
+            error_injection_enabled=True,
+            error_injection_rate=0.10,
+        )
+
+        assert config.requests_per_second == 10.0
+        assert config.error_injection_enabled is True
+        assert config.error_injection_rate == 0.10
+
+        # Should still have full pairs and amounts
+        assert len(config.currency_pairs) > 0
+        assert len(config.amounts) > 0
+
+    def test_create_full_config_error_injection_defaults(self):
+        """Test create_full_config uses error injection defaults."""
+        config = LoadTestConfig.create_full_config(requests_per_second=5.0)
+
+        assert config.requests_per_second == 5.0
+        assert config.error_injection_enabled is False
+        assert config.error_injection_rate == 0.05
+
+    def test_ensure_complete_config_preserves_error_injection(self):
+        """Test ensure_complete_config preserves error injection settings."""
+        original_config = LoadTestConfig(
+            requests_per_second=3.0,
+            currency_pairs=[],  # Empty, should be populated
+            amounts=[],  # Empty, should be populated
+            error_injection_enabled=True,
+            error_injection_rate=0.20,
+        )
+
+        complete_config = original_config.ensure_complete_config()
+
+        # Should populate empty fields but preserve error injection settings
+        assert len(complete_config.currency_pairs) > 0
+        assert len(complete_config.amounts) > 0
+        assert complete_config.error_injection_enabled is True
+        assert complete_config.error_injection_rate == 0.20

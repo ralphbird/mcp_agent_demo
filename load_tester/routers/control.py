@@ -59,7 +59,11 @@ async def start_load_test(request: StartLoadTestRequest) -> LoadTestResponse:
 
 
 @router.post("/start/simple")
-async def start_simple_load_test(requests_per_second: float) -> LoadTestResponse:
+async def start_simple_load_test(
+    requests_per_second: float,
+    error_injection_enabled: bool = False,
+    error_injection_rate: float = 0.05,
+) -> LoadTestResponse:
     """Start a load test with just RPS - automatically uses all currency pairs and amounts.
 
     This is a simplified endpoint that automatically configures the load test to use
@@ -67,6 +71,8 @@ async def start_simple_load_test(requests_per_second: float) -> LoadTestResponse
 
     Args:
         requests_per_second: Target requests per second (0.1 to 100.0)
+        error_injection_enabled: Enable error injection for realistic testing
+        error_injection_rate: Percentage of requests that should fail (0.0-0.5)
 
     Returns:
         Load test response with status and configuration
@@ -79,8 +85,17 @@ async def start_simple_load_test(requests_per_second: float) -> LoadTestResponse
             status_code=422, detail="requests_per_second must be between 0.1 and 100.0"
         )
 
+    if error_injection_enabled and not (0.0 <= error_injection_rate <= 0.5):
+        raise HTTPException(
+            status_code=422, detail="error_injection_rate must be between 0.0 and 0.5"
+        )
+
     # Create a full configuration with all pairs and appropriate amounts
-    config = LoadTestConfig.create_full_config(requests_per_second=requests_per_second)
+    config = LoadTestConfig.create_full_config(
+        requests_per_second=requests_per_second,
+        error_injection_enabled=error_injection_enabled,
+        error_injection_rate=error_injection_rate,
+    )
 
     manager = LoadTestManager()
     try:

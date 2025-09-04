@@ -187,6 +187,93 @@ class CurrencyPatterns:
             "request_id": str(uuid.uuid7()),
         }
 
+    def generate_invalid_request(self) -> dict[str, str | float]:
+        """Generate an intentionally invalid currency conversion request for error injection.
+
+        Returns:
+            Dictionary with invalid conversion request data that should cause API errors
+        """
+        # Define different types of errors to inject
+        error_types = [
+            "unsupported_currency",
+            "invalid_amount_negative",
+            "invalid_amount_zero",
+            "invalid_amount_too_large",
+            "invalid_currency_format",
+            "invalid_currency_length",
+        ]
+
+        error_type = random.choice(error_types)
+
+        if error_type == "unsupported_currency":
+            # Use invalid currency codes
+            invalid_currencies = ["XXX", "ZZZ", "ABC", "DEF", "QQQ", "WWW"]
+
+            # Randomly decide if from_currency or to_currency (or both) should be invalid
+            if random.random() < 0.5:
+                # Invalid from_currency
+                from_currency = random.choice(invalid_currencies)
+                to_currency = random.choice(list(self.CURRENCY_AMOUNTS.keys()))
+            else:
+                # Invalid to_currency
+                from_currency = random.choice(list(self.CURRENCY_AMOUNTS.keys()))
+                to_currency = random.choice(invalid_currencies)
+
+            # Use valid amount
+            amounts = (
+                self.CURRENCY_AMOUNTS[from_currency]
+                if from_currency in self.CURRENCY_AMOUNTS
+                else self.CURRENCY_AMOUNTS["USD"]
+            )
+            amount = float(random.choice(amounts))
+
+        elif error_type == "invalid_amount_negative":
+            # Use valid currencies but negative amount
+            from_currency, to_currency = random.choice(self._weighted_pairs)
+            amount = -random.uniform(10, 1000)
+
+        elif error_type == "invalid_amount_zero":
+            # Use valid currencies but zero amount
+            from_currency, to_currency = random.choice(self._weighted_pairs)
+            amount = 0.0
+
+        elif error_type == "invalid_amount_too_large":
+            # Use valid currencies but unrealistically large amount
+            from_currency, to_currency = random.choice(self._weighted_pairs)
+            amount = random.uniform(1e15, 1e18)  # Extremely large numbers
+
+        elif error_type == "invalid_currency_format":
+            # Use invalid currency code formats
+            invalid_formats = ["usd", "EUR€", "US$", "gbp", "JPY¥", "cad"]
+            from_currency = random.choice(invalid_formats)
+            to_currency = random.choice(list(self.CURRENCY_AMOUNTS.keys()))
+
+            amounts = self.CURRENCY_AMOUNTS["USD"]  # Default to USD amounts
+            amount = float(random.choice(amounts))
+
+        elif error_type == "invalid_currency_length":
+            # Use wrong length currency codes
+            invalid_lengths = ["US", "USDD", "E", "EURO", "GB", "JPYY"]
+            from_currency = random.choice(invalid_lengths)
+            to_currency = random.choice(list(self.CURRENCY_AMOUNTS.keys()))
+
+            amounts = self.CURRENCY_AMOUNTS["USD"]  # Default to USD amounts
+            amount = float(random.choice(amounts))
+
+        else:
+            # Fallback to unsupported currency
+            from_currency = "XXX"
+            to_currency = "USD"
+            amount = 100.0
+
+        return {
+            "amount": amount,
+            "from_currency": from_currency,
+            "to_currency": to_currency,
+            "request_id": str(uuid.uuid7()),
+            "_error_type": error_type,  # Internal field to track error type for debugging
+        }
+
     def get_currency_pair_distribution(self) -> dict[str, float]:
         """Get the distribution of currency pairs as percentages.
 

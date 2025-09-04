@@ -319,3 +319,124 @@ class TestCurrencyPatterns:
 
         # Should return empty list since no valid from_currencies
         assert amounts_list == []
+
+    def test_generate_invalid_request(self, patterns):
+        """Test generating invalid requests for error injection."""
+        # Generate multiple invalid requests to test different error types
+        invalid_requests = [patterns.generate_invalid_request() for _ in range(20)]
+
+        # All should have the required structure
+        for request in invalid_requests:
+            assert "amount" in request
+            assert "from_currency" in request
+            assert "to_currency" in request
+            assert "request_id" in request
+            assert "_error_type" in request  # Internal debugging field
+
+            # Verify each has some kind of invalid data
+            error_type = request["_error_type"]
+            assert error_type in [
+                "unsupported_currency",
+                "invalid_amount_negative",
+                "invalid_amount_zero",
+                "invalid_amount_too_large",
+                "invalid_currency_format",
+                "invalid_currency_length",
+            ]
+
+        # Verify we get different error types over multiple generations
+        error_types = {req["_error_type"] for req in invalid_requests}
+        assert len(error_types) > 1, "Should generate different types of errors"
+
+    def test_generate_invalid_request_unsupported_currency(self, patterns):
+        """Test unsupported currency error injection."""
+        # Generate many invalid requests to eventually get unsupported currency type
+        invalid_currencies = ["XXX", "ZZZ", "ABC", "DEF", "QQQ", "WWW"]
+        found_unsupported = False
+
+        for _ in range(50):  # Try many times to find this error type
+            request = patterns.generate_invalid_request()
+            if request["_error_type"] == "unsupported_currency":
+                # Either from_currency or to_currency should be invalid
+                from_invalid = request["from_currency"] in invalid_currencies
+                to_invalid = request["to_currency"] in invalid_currencies
+                assert from_invalid or to_invalid, "Should have at least one invalid currency"
+                found_unsupported = True
+                break
+
+        assert found_unsupported, "Should eventually generate unsupported currency error"
+
+    def test_generate_invalid_request_negative_amount(self, patterns):
+        """Test negative amount error injection."""
+        # Generate many invalid requests to find negative amount
+        found_negative = False
+
+        for _ in range(50):
+            request = patterns.generate_invalid_request()
+            if request["_error_type"] == "invalid_amount_negative":
+                assert request["amount"] < 0, "Should have negative amount"
+                found_negative = True
+                break
+
+        assert found_negative, "Should eventually generate negative amount error"
+
+    def test_generate_invalid_request_zero_amount(self, patterns):
+        """Test zero amount error injection."""
+        # Generate many invalid requests to find zero amount
+        found_zero = False
+
+        for _ in range(50):
+            request = patterns.generate_invalid_request()
+            if request["_error_type"] == "invalid_amount_zero":
+                assert request["amount"] == 0.0, "Should have zero amount"
+                found_zero = True
+                break
+
+        assert found_zero, "Should eventually generate zero amount error"
+
+    def test_generate_invalid_request_large_amount(self, patterns):
+        """Test unrealistically large amount error injection."""
+        found_large = False
+
+        for _ in range(50):
+            request = patterns.generate_invalid_request()
+            if request["_error_type"] == "invalid_amount_too_large":
+                assert request["amount"] >= 1e15, "Should have very large amount"
+                found_large = True
+                break
+
+        assert found_large, "Should eventually generate large amount error"
+
+    def test_generate_invalid_request_invalid_format(self, patterns):
+        """Test invalid currency format error injection."""
+        invalid_formats = ["usd", "EUR€", "US$", "gbp", "JPY¥", "cad"]
+        found_format = False
+
+        for _ in range(50):
+            request = patterns.generate_invalid_request()
+            if request["_error_type"] == "invalid_currency_format":
+                # from_currency should be in invalid format (since we generate invalid from_currency)
+                assert request["from_currency"] in invalid_formats, (
+                    "Should have invalid format currency"
+                )
+                found_format = True
+                break
+
+        assert found_format, "Should eventually generate format error"
+
+    def test_generate_invalid_request_invalid_length(self, patterns):
+        """Test invalid currency length error injection."""
+        invalid_lengths = ["US", "USDD", "E", "EURO", "GB", "JPYY"]
+        found_length = False
+
+        for _ in range(50):
+            request = patterns.generate_invalid_request()
+            if request["_error_type"] == "invalid_currency_length":
+                # from_currency should be wrong length
+                assert request["from_currency"] in invalid_lengths, (
+                    "Should have wrong length currency"
+                )
+                found_length = True
+                break
+
+        assert found_length, "Should eventually generate length error"

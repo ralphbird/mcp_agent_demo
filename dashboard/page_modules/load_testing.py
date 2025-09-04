@@ -294,6 +294,38 @@ def show_load_testing_page():
                 help="Number of requests to send per second. All currency pairs and appropriate amounts will be used automatically.",
             )
 
+            # Error injection settings
+            st.markdown("**🔬 Error Injection (Advanced):**")
+            error_injection_col1, error_injection_col2 = st.columns(2)
+
+            with error_injection_col1:
+                error_injection_enabled = st.checkbox(
+                    "Enable Error Injection",
+                    value=False,
+                    help="Include a percentage of invalid requests for realistic testing",
+                )
+
+            with error_injection_col2:
+                if error_injection_enabled:
+                    error_injection_rate = st.slider(
+                        "Error Rate",
+                        min_value=0.01,
+                        max_value=0.30,
+                        value=0.05,
+                        step=0.01,
+                        format="%.2f",
+                        help="Percentage of requests that will be invalid (1%-30%)",
+                    )
+                else:
+                    error_injection_rate = 0.05
+                    st.text("Error Rate: 5% (disabled)")
+
+            if error_injection_enabled:
+                st.info(
+                    "🧪 **Error Injection**: Includes invalid requests like unsupported currencies (XXX, ZZZ), "
+                    "negative amounts, zero amounts, wrong currency formats, etc. This simulates real-world traffic patterns."
+                )
+
             col1, col2, col3 = st.columns(3)
             with col1:
                 st.metric("Currency Pairs", "All Available (42 pairs)")
@@ -308,9 +340,16 @@ def show_load_testing_page():
             )
 
             if st.button("🚀 Start Simple Load Test", type="primary"):
-                result = start_simple_load_test(simple_rps)
+                result = start_simple_load_test(
+                    simple_rps, error_injection_enabled, error_injection_rate
+                )
                 if result:
-                    st.success("Simple load test started successfully!")
+                    if error_injection_enabled:
+                        st.success(
+                            f"Simple load test started with {error_injection_rate:.1%} error injection!"
+                        )
+                    else:
+                        st.success("Simple load test started successfully!")
                     st.rerun()
                 else:
                     st.error("Failed to start load test. Check the API connection.")

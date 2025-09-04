@@ -63,9 +63,24 @@ class LoadTestConfig(BaseModel):
         default_factory=_get_all_amounts,
         description="Transaction amounts to test (defaults to all available amounts)",
     )
+    error_injection_enabled: bool = Field(
+        default=False,
+        description="Enable error injection to generate requests that will fail",
+    )
+    error_injection_rate: float = Field(
+        default=0.05,
+        ge=0.0,
+        le=0.5,
+        description="Percentage of requests that should intentionally fail (0.0-0.5)",
+    )
 
     @classmethod
-    def create_full_config(cls, requests_per_second: float = 1.0) -> "LoadTestConfig":
+    def create_full_config(
+        cls,
+        requests_per_second: float = 1.0,
+        error_injection_enabled: bool = False,
+        error_injection_rate: float = 0.05,
+    ) -> "LoadTestConfig":
         """Create a config with all currency pairs and appropriate amounts.
 
         This is the recommended way to create configs that use all available
@@ -73,6 +88,8 @@ class LoadTestConfig(BaseModel):
 
         Args:
             requests_per_second: Target requests per second
+            error_injection_enabled: Enable error injection for realistic testing
+            error_injection_rate: Percentage of requests that should fail (0.0-0.5)
 
         Returns:
             LoadTestConfig with all pairs and appropriate amounts
@@ -81,6 +98,8 @@ class LoadTestConfig(BaseModel):
             requests_per_second=requests_per_second,
             currency_pairs=_get_all_currency_pairs(),
             amounts=_get_all_amounts(),
+            error_injection_enabled=error_injection_enabled,
+            error_injection_rate=error_injection_rate,
         )
 
     def ensure_complete_config(self) -> "LoadTestConfig":
@@ -103,6 +122,8 @@ class LoadTestConfig(BaseModel):
             requests_per_second=self.requests_per_second,
             currency_pairs=currency_pairs,
             amounts=amounts,
+            error_injection_enabled=self.error_injection_enabled,
+            error_injection_rate=self.error_injection_rate,
         )
 
 

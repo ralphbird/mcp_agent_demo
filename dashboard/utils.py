@@ -149,12 +149,21 @@ def start_load_test_scenario(scenario: str):
         return None
 
 
-def start_simple_load_test(requests_per_second: float):
+def start_simple_load_test(
+    requests_per_second: float,
+    error_injection_enabled: bool = False,
+    error_injection_rate: float = 0.05,
+):
     """Start a load test with just RPS - automatically uses all currency pairs and amounts."""
     try:
+        params = {"requests_per_second": requests_per_second}
+        if error_injection_enabled:
+            params["error_injection_enabled"] = error_injection_enabled
+            params["error_injection_rate"] = error_injection_rate
+
         response = requests.post(
             f"{LOAD_TESTER_URL}/api/load-test/start/simple",
-            params={"requests_per_second": requests_per_second},
+            params=params,
             timeout=30,
         )
         response.raise_for_status()

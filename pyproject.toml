@@ -112,6 +112,9 @@ known-first-party = ["currency_app", "load_tester", "dashboard"]
 
 [tool.ruff.lint.per-file-ignores]
 "**/tests/*" = ['S101'] # allow use of assert in tests
+"**/routers/*.py" = ["FBT001", "FBT002"]  # Allow boolean parameters in API endpoints
+"**/utils.py" = ["FBT001", "FBT002"]     # Allow boolean parameters in utility functions for APIs
+"**/models/load_test.py" = ["FBT001", "FBT002"]  # Allow boolean parameters in LoadTestConfig methods
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"        # see python standards for discussion on docstyle

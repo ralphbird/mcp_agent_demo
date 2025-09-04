@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+from currency_app.auth.jwt_auth import generate_jwt_token
 from currency_app.database import get_db
 from currency_app.main import app
 from currency_app.models.database import Base
@@ -30,20 +31,39 @@ def override_get_db():
         db.close()
 
 
-app.dependency_overrides[get_db] = override_get_db
-
-
 @pytest.fixture
 def client():
     """Create test client with test database."""
     # Create test tables
     Base.metadata.create_all(bind=engine)
 
-    with TestClient(app) as test_client:
-        yield test_client
+    # Override database dependency for this test only
+    app.dependency_overrides[get_db] = override_get_db
 
-    # Clean up
-    Base.metadata.drop_all(bind=engine)
+    try:
+        with TestClient(app) as test_client:
+            yield test_client
+    finally:
+        # Clean up database override and tables
+        if get_db in app.dependency_overrides:
+            del app.dependency_overrides[get_db]
+        Base.metadata.drop_all(bind=engine)
+
+
+@pytest.fixture
+def auth_headers():
+    """Create authorization headers for authenticated requests."""
+    # Generate test JWT token
+    test_account_id = "test-account-123"
+    test_user_id = "test-user-456"
+
+    token = generate_jwt_token(
+        account_id=test_account_id,
+        user_id=test_user_id,
+        expires_in_seconds=None,  # No expiration for tests
+    )
+
+    return {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
 
 
 class TestHealthEndpoints:
@@ -112,11 +132,11 @@ class TestAPIEndpoint:
 class TestConversionEndpoint:
     """Test currency conversion endpoints."""
 
-    def test_convert_usd_to_eur_success(self, client):
+    def test_convert_usd_to_eur_success(self, client, auth_headers):
         """Test successful USD to EUR conversion."""
         request_data = {"amount": 100.00, "from_currency": "USD", "to_currency": "EUR"}
 
-        response = client.post("/api/v1/convert", json=request_data)
+        response = client.post("/api/v1/convert", json=request_data, headers=auth_headers)
 
         assert response.status_code == 200
         data = response.json()
@@ -139,22 +159,22 @@ class TestConversionEndpoint:
         assert metadata["calculation_method"] == "direct"
         assert metadata["precision"] == "4"
 
-    def test_convert_same_currency(self, client):
+    def test_convert_same_currency(self, client, auth_headers):
         """Test conversion with same currency."""
         request_data = {"amount": 50.00, "from_currency": "USD", "to_currency": "USD"}
 
-        response = client.post("/api/v1/convert", json=request_data)
+        response = client.post("/api/v1/convert", json=request_data, headers=auth_headers)
 
         assert response.status_code == 200
         data = response.json()
         assert float(data["converted_amount"]) == 50.0
         assert float(data["exchange_rate"]) == 1.0
 
-    def test_convert_lowercase_currencies(self, client):
+    def test_convert_lowercase_currencies(self, client, auth_headers):
         """Test conversion with lowercase currency codes."""
         request_data = {"amount": 25.50, "from_currency": "gbp", "to_currency": "jpy"}
 
-        response = client.post("/api/v1/convert", json=request_data)
+        response = client.post("/api/v1/convert", json=request_data, headers=auth_headers)
 
         assert response.status_code == 200
         data = response.json()
@@ -163,54 +183,54 @@ class TestConversionEndpoint:
         # GBP to JPY should be > 130 (rough check)
         assert float(data["converted_amount"]) > 3000
 
-    def test_convert_invalid_from_currency(self, client):
+    def test_convert_invalid_from_currency(self, client, auth_headers):
         """Test conversion with invalid source currency."""
         request_data = {"amount": 100.00, "from_currency": "INVALID", "to_currency": "EUR"}
 
-        response = client.post("/api/v1/convert", json=request_data)
+        response = client.post("/api/v1/convert", json=request_data, headers=auth_headers)
 
         assert response.status_code == 422  # Pydantic validation error
         data = response.json()
         assert "detail" in data
 
-    def test_convert_invalid_to_currency(self, client):
+    def test_convert_invalid_to_currency(self, client, auth_headers):
         """Test conversion with invalid target currency."""
         request_data = {"amount": 100.00, "from_currency": "USD", "to_currency": "INVALID"}
 
-        response = client.post("/api/v1/convert", json=request_data)
+        response = client.post("/api/v1/convert", json=request_data, headers=auth_headers)
 
         assert response.status_code == 422  # Pydantic validation error
         data = response.json()
         assert "detail" in data
 
-    def test_convert_zero_amount(self, client):
+    def test_convert_zero_amount(self, client, auth_headers):
         """Test conversion with zero amount (should fail validation)."""
         request_data = {"amount": 0.00, "from_currency": "USD", "to_currency": "EUR"}
 
-        response = client.post("/api/v1/convert", json=request_data)
+        response = client.post("/api/v1/convert", json=request_data, headers=auth_headers)
 
         assert response.status_code == 422  # Validation error
 
-    def test_convert_negative_amount(self, client):
+    def test_convert_negative_amount(self, client, auth_headers):
         """Test conversion with negative amount (should fail validation)."""
         request_data = {"amount": -50.00, "from_currency": "USD", "to_currency": "EUR"}
 
-        response = client.post("/api/v1/convert", json=request_data)
+        response = client.post("/api/v1/convert", json=request_data, headers=auth_headers)
 
         assert response.status_code == 422  # Validation error
 
-    def test_convert_missing_fields(self, client):
+    def test_convert_missing_fields(self, client, auth_headers):
         """Test conversion with missing required fields."""
         request_data = {
             "amount": 100.00
             # Missing from_currency and to_currency
         }
 
-        response = client.post("/api/v1/convert", json=request_data)
+        response = client.post("/api/v1/convert", json=request_data, headers=auth_headers)
 
         assert response.status_code == 422  # Validation error
 
-    def test_convert_invalid_currency_length(self, client):
+    def test_convert_invalid_currency_length(self, client, auth_headers):
         """Test conversion with invalid currency code length."""
         request_data = {
             "amount": 100.00,
@@ -218,16 +238,16 @@ class TestConversionEndpoint:
             "to_currency": "EUR",
         }
 
-        response = client.post("/api/v1/convert", json=request_data)
+        response = client.post("/api/v1/convert", json=request_data, headers=auth_headers)
 
         assert response.status_code == 422  # Validation error
 
-    def test_convert_unsupported_currency_service_error(self, client):
+    def test_convert_unsupported_currency_service_error(self, client, auth_headers):
         """Test conversion with 3-char currency that passes Pydantic but fails in service."""
         # Use "XYZ" - passes Pydantic validation (3 chars) but triggers InvalidCurrencyError
         request_data = {"amount": 100.00, "from_currency": "XYZ", "to_currency": "EUR"}
 
-        response = client.post("/api/v1/convert", json=request_data)
+        response = client.post("/api/v1/convert", json=request_data, headers=auth_headers)
 
         # Should get 400 (InvalidCurrencyError) not 422 (Pydantic validation)
         assert response.status_code == 400

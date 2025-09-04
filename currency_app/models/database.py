@@ -24,6 +24,8 @@ class ConversionHistory(Base):
     to_currency = Column(String(3), nullable=False)
     converted_amount = Column(Numeric(15, 2), nullable=False)
     exchange_rate = Column(Numeric(10, 6), nullable=False)
+    account_id = Column(String(36), nullable=False)
+    user_id = Column(String(36), nullable=False)
     conversion_timestamp = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
 
     def __repr__(self) -> str:
@@ -32,6 +34,8 @@ class ConversionHistory(Base):
             f"<ConversionHistory("
             f"id={self.id}, "
             f"conversion_id='{self.conversion_id}', "
+            f"account_id='{self.account_id}', "
+            f"user_id='{self.user_id}', "
             f"from_currency='{self.from_currency}', "
             f"to_currency='{self.to_currency}', "
             f"amount={self.amount}"

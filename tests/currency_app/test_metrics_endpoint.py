@@ -160,14 +160,14 @@ class TestMetricsEndpoint:
         # Make successful request
         client.get("/")
 
-        # Make request that returns 404
+        # Make request that returns 401 (unauthenticated request to nonexistent endpoint)
         client.get("/nonexistent")
 
         # Get metrics
         response = client.get("/metrics")
         content = response.text
 
-        # Should show both 200 and 404 status codes
+        # Should show both 200 and 401 status codes
         lines = content.split("\n")
 
         status_200_lines = [
@@ -175,10 +175,10 @@ class TestMetricsEndpoint:
         ]
         assert len(status_200_lines) >= 1
 
-        status_404_lines = [
-            line for line in lines if "http_requests_total{" in line and 'status_code="404"' in line
+        status_401_lines = [
+            line for line in lines if "http_requests_total{" in line and 'status_code="401"' in line
         ]
-        assert len(status_404_lines) >= 1
+        assert len(status_401_lines) >= 1
 
     def test_metrics_content_type_header(self, client):
         """Test that metrics endpoint has correct content-type header."""

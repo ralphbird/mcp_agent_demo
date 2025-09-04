@@ -6,6 +6,7 @@ from fastapi import FastAPI, Response
 
 from currency_app.database import create_tables
 from currency_app.logging_config import get_logger
+from currency_app.middleware.auth import AuthenticationMiddleware
 from currency_app.middleware.logging import LoggingMiddleware
 from currency_app.middleware.metrics import PrometheusMiddleware, get_metrics
 from currency_app.routers import conversion, health, home, rates
@@ -56,7 +57,8 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Add middleware (order matters - logging should be first to capture all requests)
+# Add middleware (order matters - auth first, then logging to capture all requests)
+app.add_middleware(AuthenticationMiddleware)
 app.add_middleware(LoggingMiddleware)
 app.add_middleware(PrometheusMiddleware)
 

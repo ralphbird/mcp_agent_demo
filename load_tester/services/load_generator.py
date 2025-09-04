@@ -7,6 +7,8 @@ import time
 import aiohttp
 from pydantic import ValidationError
 
+from load_tester.auth.jwt_generator import get_jwt_token_manager
+from load_tester.auth.test_users import get_random_test_user
 from load_tester.config import settings
 from load_tester.middleware.metrics import record_load_test_request
 from load_tester.models.load_test import LoadTestConfig, LoadTestStats
@@ -54,6 +56,9 @@ class LoadGenerator:
         self._session: aiohttp.ClientSession | None = None
         self._tasks: list[asyncio.Task] = []
         self._stats_lock = asyncio.Lock()
+
+        # JWT authentication management
+        self._jwt_token_manager = get_jwt_token_manager()
 
     async def start(self) -> None:
         """Start the load generation process."""
@@ -249,11 +254,18 @@ class LoadGenerator:
             else:
                 request_data = self.currency_patterns.generate_random_request()
 
+            # Select random test user and get JWT token for authentication
+            test_user = get_random_test_user()
+            authorization_header = self._jwt_token_manager.get_authorization_header(test_user)
+
+            # Prepare headers with JWT authentication
+            headers = {"Authorization": authorization_header, "Content-Type": "application/json"}
+
             # Make HTTP request to currency conversion endpoint
             url = f"{settings.target_api_base_url}/api/v1/convert"
             start_time = time.time()
 
-            async with self._session.post(url, json=request_data) as response:
+            async with self._session.post(url, json=request_data, headers=headers) as response:
                 response_time_ms = (time.time() - start_time) * 1000
 
                 # Read response body to ensure full request completion

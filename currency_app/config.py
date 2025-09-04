@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     # Data directory for persistent storage
     data_directory: str = "data"
 
+    # JWT Configuration
+    jwt_secret_key: str = "dev-secret-key-change-in-production"
+
     @computed_field
     @property
     def data_dir(self) -> Path:
@@ -57,6 +60,18 @@ class Settings(BaseSettings):
         """Validate database URL format."""
         if not v:
             msg = "Database URL cannot be empty"
+            raise ValueError(msg)
+        return v
+
+    @field_validator("jwt_secret_key")
+    @classmethod
+    def validate_jwt_secret_key(cls, v: str) -> str:
+        """Validate JWT secret key."""
+        if not v:
+            msg = "JWT secret key cannot be empty"
+            raise ValueError(msg)
+        if len(v) < 16:
+            msg = "JWT secret key must be at least 16 characters long"
             raise ValueError(msg)
         return v
 

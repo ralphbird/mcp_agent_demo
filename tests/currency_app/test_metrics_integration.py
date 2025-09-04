@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+from currency_app.auth.jwt_auth import generate_jwt_token
 from currency_app.database import get_db
 from currency_app.main import app
 from currency_app.middleware.metrics import (
@@ -71,6 +72,21 @@ class TestMetricsIntegration:
         RATES_REQUESTS_TOTAL.clear()
         DATABASE_OPERATIONS_TOTAL.clear()
 
+    @pytest.fixture
+    def auth_headers(self):
+        """Create authorization headers for authenticated requests."""
+        # Generate test JWT token
+        test_account_id = "metrics-test-account-123"
+        test_user_id = "metrics-test-user-456"
+
+        token = generate_jwt_token(
+            account_id=test_account_id,
+            user_id=test_user_id,
+            expires_in_seconds=None,  # No expiration for tests
+        )
+
+        return {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+
     def test_root_endpoint_generates_metrics(self, client):
         """Test that root endpoint generates HTTP metrics."""
         response = client.get("/")
@@ -98,11 +114,13 @@ class TestMetricsIntegration:
             'http_requests_total{endpoint="/health",method="GET",status_code="200"} 1.0' in content
         )
 
-    def test_currency_conversion_generates_multiple_metrics(self, client):
+    def test_currency_conversion_generates_multiple_metrics(self, client, auth_headers):
         """Test that currency conversion generates both HTTP and application metrics."""
         # Make conversion request
         response = client.post(
-            "/api/v1/convert", json={"amount": 100.0, "from_currency": "USD", "to_currency": "EUR"}
+            "/api/v1/convert",
+            json={"amount": 100.0, "from_currency": "USD", "to_currency": "EUR"},
+            headers=auth_headers,
         )
         assert response.status_code == 200
 
@@ -158,7 +176,7 @@ class TestMetricsIntegration:
         # Should show rates request metrics
         assert 'rates_requests_total{endpoint="rates_history",status="success"} 1.0' in content
 
-    def test_error_requests_generate_error_metrics(self, client):
+    def test_error_requests_generate_error_metrics(self, client, auth_headers):
         """Test that error requests generate appropriate error metrics."""
         # Invalid conversion request
         response = client.post(
@@ -168,6 +186,7 @@ class TestMetricsIntegration:
                 "from_currency": "USD",
                 "to_currency": "EUR",
             },
+            headers=auth_headers,
         )
         assert response.status_code == 422
 
@@ -181,11 +200,13 @@ class TestMetricsIntegration:
             in content
         )
 
-    def test_invalid_currency_generates_error_metrics(self, client):
+    def test_invalid_currency_generates_error_metrics(self, client, auth_headers):
         """Test that invalid currency requests generate error metrics."""
         # Request with invalid currency (passes Pydantic but fails service)
         response = client.post(
-            "/api/v1/convert", json={"amount": 100.0, "from_currency": "XYZ", "to_currency": "EUR"}
+            "/api/v1/convert",
+            json={"amount": 100.0, "from_currency": "XYZ", "to_currency": "EUR"},
+            headers=auth_headers,
         )
         assert response.status_code == 400
 
@@ -205,17 +226,21 @@ class TestMetricsIntegration:
             in content
         )
 
-    def test_multiple_requests_accumulate_metrics(self, client):
+    def test_multiple_requests_accumulate_metrics(self, client, auth_headers):
         """Test that multiple requests accumulate metrics correctly."""
         # Make multiple requests
         client.get("/")
         client.get("/")
         client.get("/health")
         client.post(
-            "/api/v1/convert", json={"amount": 100.0, "from_currency": "USD", "to_currency": "EUR"}
+            "/api/v1/convert",
+            json={"amount": 100.0, "from_currency": "USD", "to_currency": "EUR"},
+            headers=auth_headers,
         )
         client.post(
-            "/api/v1/convert", json={"amount": 50.0, "from_currency": "EUR", "to_currency": "GBP"}
+            "/api/v1/convert",
+            json={"amount": 50.0, "from_currency": "EUR", "to_currency": "GBP"},
+            headers=auth_headers,
         )
 
         # Check metrics
@@ -317,7 +342,7 @@ class TestMetricsIntegration:
         # Should NOT contain any metrics for the /metrics endpoint itself
         assert 'endpoint="/metrics"' not in content
 
-    def test_full_application_workflow_metrics(self, client):
+    def test_full_application_workflow_metrics(self, client, auth_headers):
         """Test metrics for a complete application workflow."""
         # Full workflow: check health, get rates, perform conversion
         health_response = client.get("/health")
@@ -327,7 +352,9 @@ class TestMetricsIntegration:
         assert rates_response.status_code == 200
 
         conversion_response = client.post(
-            "/api/v1/convert", json={"amount": 100.0, "from_currency": "USD", "to_currency": "EUR"}
+            "/api/v1/convert",
+            json={"amount": 100.0, "from_currency": "USD", "to_currency": "EUR"},
+            headers=auth_headers,
         )
         assert conversion_response.status_code == 200
 

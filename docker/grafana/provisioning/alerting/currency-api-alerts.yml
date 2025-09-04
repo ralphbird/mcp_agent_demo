@@ -155,7 +155,7 @@ groups:
             model:
               conditions:
                 - evaluator:
-                    params: [10]
+                    params: [30]
                     type: gt
                   operator:
                     type: and
@@ -178,7 +178,7 @@ groups:
         for: 5m
         keep_firing_for: 30s
         annotations:
-          description: "Currency API is receiving high request volume"
+          description: "Currency API is receiving unusually high request volume (>30 RPS for 5 minutes)"
           summary: "High request rate in Currency API"
           severity: "warning"
         labels:

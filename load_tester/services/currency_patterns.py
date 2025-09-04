@@ -112,6 +112,61 @@ class CurrencyPatterns:
         for (from_curr, to_curr), weight in self.CURRENCY_PAIR_WEIGHTS.items():
             self._weighted_pairs.extend([(from_curr, to_curr)] * weight)
 
+    def get_all_currency_pairs_with_amounts(self) -> dict[str, list[float]]:
+        """Get all currency pairs with appropriate amounts based on from currency.
+
+        Returns:
+            Dictionary mapping currency pair strings to lists of amounts.
+            Each pair uses amounts appropriate for its from currency.
+
+        Example:
+            {
+                "USD_EUR": [100.0, 250.0, 500.0, 1000.0, 2500.0, 5000.0, 10000.0],
+                "JPY_USD": [10000.0, 25000.0, 50000.0, 100000.0, 250000.0, 500000.0, 1000000.0],
+                "EUR_GBP": [100.0, 250.0, 500.0, 750.0, 1000.0, 2000.0, 5000.0]
+            }
+        """
+        pairs_with_amounts = {}
+
+        for from_curr, to_curr in self.CURRENCY_PAIR_WEIGHTS:
+            pair_str = f"{from_curr}_{to_curr}"
+
+            # Use amounts from the from_currency, fallback to USD if not found
+            if from_curr in self.CURRENCY_AMOUNTS:
+                amounts = [float(amount) for amount in self.CURRENCY_AMOUNTS[from_curr]]
+            else:
+                amounts = [float(amount) for amount in self.CURRENCY_AMOUNTS["USD"]]
+
+            pairs_with_amounts[pair_str] = amounts
+
+        return pairs_with_amounts
+
+    def get_all_currency_pairs_list(self) -> list[str]:
+        """Get list of all currency pairs as strings.
+
+        Returns:
+            List of currency pair strings like ["USD_EUR", "EUR_USD", ...]
+        """
+        return sorted(self.get_all_currency_pairs_with_amounts().keys())
+
+    def get_all_amounts_for_pairs(self, currency_pairs: list[str]) -> list[float]:
+        """Get all unique amounts needed for the given currency pairs.
+
+        Args:
+            currency_pairs: List of currency pair strings
+
+        Returns:
+            Sorted list of all unique amounts across the pairs
+        """
+        pairs_with_amounts = self.get_all_currency_pairs_with_amounts()
+        all_amounts = set()
+
+        for pair in currency_pairs:
+            if pair in pairs_with_amounts:
+                all_amounts.update(pairs_with_amounts[pair])
+
+        return sorted(all_amounts)
+
     def generate_random_request(self) -> dict[str, str | float]:
         """Generate a realistic currency conversion request.
 

@@ -39,6 +39,8 @@ def show_converter_page():
         if from_currency == to_currency:
             st.warning("Please select different currencies")
         else:
+            assert isinstance(from_currency, str)
+            assert isinstance(to_currency, str)
             result = convert_currency(amount, from_currency, to_currency)
             if result:
                 st.success("✅ Conversion successful!")

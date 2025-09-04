@@ -193,3 +193,129 @@ class TestCurrencyPatterns:
             # This is a statistical test and can have natural variation
             tolerance = max(expected_ratio * 1.0, 0.015)  # At least 1.5% tolerance
             assert abs(actual_ratio - expected_ratio) < tolerance
+
+    def test_get_all_currency_pairs_with_amounts(self, patterns):
+        """Test getting all currency pairs with their appropriate amounts."""
+        pairs_with_amounts = patterns.get_all_currency_pairs_with_amounts()
+
+        # Should be a dictionary
+        assert isinstance(pairs_with_amounts, dict)
+        assert len(pairs_with_amounts) > 0
+
+        # Keys should be currency pair strings (FROM_TO format)
+        for pair_str, amounts in pairs_with_amounts.items():
+            assert isinstance(pair_str, str)
+            assert "_" in pair_str
+            from_currency, to_currency = pair_str.split("_")
+            assert len(from_currency) == 3
+            assert len(to_currency) == 3
+
+            # Verify the pair exists in CURRENCY_PAIR_WEIGHTS
+            assert (from_currency, to_currency) in patterns.CURRENCY_PAIR_WEIGHTS
+
+            # Values should be lists of amounts appropriate for the from_currency
+            assert isinstance(amounts, list)
+            assert len(amounts) > 0
+
+            # All amounts should be positive floats
+            for amount in amounts:
+                assert isinstance(amount, float)
+                assert amount > 0
+
+            # Amounts should match those defined for the from_currency
+            expected_amounts = [float(amt) for amt in patterns.CURRENCY_AMOUNTS[from_currency]]
+            assert amounts == expected_amounts
+
+    def test_get_all_currency_pairs_list(self, patterns):
+        """Test getting list of all currency pairs."""
+        pairs_list = patterns.get_all_currency_pairs_list()
+
+        # Should be a list
+        assert isinstance(pairs_list, list)
+        assert len(pairs_list) > 0
+
+        # Each item should be a currency pair string
+        for pair_str in pairs_list:
+            assert isinstance(pair_str, str)
+            assert "_" in pair_str
+            from_currency, to_currency = pair_str.split("_")
+            assert len(from_currency) == 3
+            assert len(to_currency) == 3
+
+            # Verify the pair exists in CURRENCY_PAIR_WEIGHTS
+            assert (from_currency, to_currency) in patterns.CURRENCY_PAIR_WEIGHTS
+
+        # Should contain all pairs from CURRENCY_PAIR_WEIGHTS
+        expected_pairs = {f"{fc}_{tc}" for fc, tc in patterns.CURRENCY_PAIR_WEIGHTS}
+        assert set(pairs_list) == expected_pairs
+
+        # List should be sorted
+        assert pairs_list == sorted(pairs_list)
+
+    def test_get_all_amounts_for_pairs(self, patterns):
+        """Test getting all amounts for specified currency pairs."""
+        # Test with a subset of pairs
+        test_pairs = ["USD_EUR", "EUR_USD", "JPY_USD", "USD_JPY"]
+        amounts_list = patterns.get_all_amounts_for_pairs(test_pairs)
+
+        # Should be a list of unique amounts
+        assert isinstance(amounts_list, list)
+        assert len(amounts_list) > 0
+
+        # All amounts should be positive floats
+        for amount in amounts_list:
+            assert isinstance(amount, float)
+            assert amount > 0
+
+        # Should contain amounts from all from-currencies in the pairs
+        expected_amounts = set()
+        for pair_str in test_pairs:
+            from_currency = pair_str.split("_")[0]
+            if from_currency in patterns.CURRENCY_AMOUNTS:
+                expected_amounts.update(
+                    float(amt) for amt in patterns.CURRENCY_AMOUNTS[from_currency]
+                )
+
+        assert set(amounts_list) == expected_amounts
+
+        # List should be sorted
+        assert amounts_list == sorted(amounts_list)
+
+    def test_get_all_amounts_for_pairs_all_pairs(self, patterns):
+        """Test getting all amounts for all currency pairs."""
+        all_pairs = patterns.get_all_currency_pairs_list()
+        amounts_list = patterns.get_all_amounts_for_pairs(all_pairs)
+
+        # Should be a comprehensive list
+        assert isinstance(amounts_list, list)
+        assert len(amounts_list) > 0
+
+        # Should contain amounts from all currencies that appear as from_currency
+        from_currencies = {pair.split("_")[0] for pair in all_pairs}
+        expected_amounts = set()
+        for from_currency in from_currencies:
+            if from_currency in patterns.CURRENCY_AMOUNTS:
+                expected_amounts.update(
+                    float(amt) for amt in patterns.CURRENCY_AMOUNTS[from_currency]
+                )
+
+        assert set(amounts_list) == expected_amounts
+
+        # List should be sorted and unique
+        assert amounts_list == sorted(set(amounts_list))
+
+    def test_get_all_amounts_for_pairs_empty_list(self, patterns):
+        """Test getting amounts for empty pairs list."""
+        amounts_list = patterns.get_all_amounts_for_pairs([])
+
+        # Should return empty list for empty input
+        assert amounts_list == []
+
+    def test_get_all_amounts_for_pairs_invalid_pairs(self, patterns):
+        """Test getting amounts for invalid currency pairs."""
+        # Test with pairs that don't exist
+        invalid_pairs = ["XXX_YYY", "ZZZ_AAA"]
+        amounts_list = patterns.get_all_amounts_for_pairs(invalid_pairs)
+
+        # Should return empty list since no valid from_currencies
+        assert amounts_list == []

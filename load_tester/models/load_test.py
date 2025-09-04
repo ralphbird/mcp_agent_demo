@@ -16,33 +16,23 @@ def _get_all_currency_pairs() -> list[str]:
     from load_tester.services.currency_patterns import CurrencyPatterns
 
     patterns = CurrencyPatterns()
-    pairs = []
-
-    for from_curr, to_curr in patterns.CURRENCY_PAIR_WEIGHTS:
-        pair_str = f"{from_curr}_{to_curr}"
-        if pair_str not in pairs:
-            pairs.append(pair_str)
-
-    return sorted(pairs)
+    return patterns.get_all_currency_pairs_list()
 
 
 def _get_all_amounts() -> list[float]:
-    """Get all available transaction amounts from currency patterns.
+    """Get all available transaction amounts for all currency pairs.
+
+    Each amount is appropriate for its from currency context.
 
     Returns:
-        List of all unique amounts across all currencies
+        List of all unique amounts across all currency pairs with their appropriate from-currency amounts
     """
     # Import here to avoid circular imports
     from load_tester.services.currency_patterns import CurrencyPatterns
 
     patterns = CurrencyPatterns()
-    amounts = set()
-
-    for currency_amounts in patterns.CURRENCY_AMOUNTS.values():
-        for amount in currency_amounts:
-            amounts.add(float(amount))
-
-    return sorted(amounts)
+    all_pairs = patterns.get_all_currency_pairs_list()
+    return patterns.get_all_amounts_for_pairs(all_pairs)
 
 
 class LoadTestStatus(str, Enum):
@@ -73,6 +63,47 @@ class LoadTestConfig(BaseModel):
         default_factory=_get_all_amounts,
         description="Transaction amounts to test (defaults to all available amounts)",
     )
+
+    @classmethod
+    def create_full_config(cls, requests_per_second: float = 1.0) -> "LoadTestConfig":
+        """Create a config with all currency pairs and appropriate amounts.
+
+        This is the recommended way to create configs that use all available
+        currency pairs with amounts appropriate to each pair's from currency.
+
+        Args:
+            requests_per_second: Target requests per second
+
+        Returns:
+            LoadTestConfig with all pairs and appropriate amounts
+        """
+        return cls(
+            requests_per_second=requests_per_second,
+            currency_pairs=_get_all_currency_pairs(),
+            amounts=_get_all_amounts(),
+        )
+
+    def ensure_complete_config(self) -> "LoadTestConfig":
+        """Ensure this config has all currency pairs and appropriate amounts.
+
+        If currency_pairs or amounts are empty/missing, populate them with defaults.
+
+        Returns:
+            LoadTestConfig with complete currency pairs and amounts
+        """
+        # Check for empty lists as well as None/missing
+        currency_pairs = (
+            self.currency_pairs
+            if (self.currency_pairs and len(self.currency_pairs) > 0)
+            else _get_all_currency_pairs()
+        )
+        amounts = self.amounts if (self.amounts and len(self.amounts) > 0) else _get_all_amounts()
+
+        return LoadTestConfig(
+            requests_per_second=self.requests_per_second,
+            currency_pairs=currency_pairs,
+            amounts=amounts,
+        )
 
 
 class StartLoadTestRequest(BaseModel):

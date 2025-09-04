@@ -1,5 +1,7 @@
 """Historical trends page."""
 
+from typing import cast
+
 import pandas as pd
 import plotly.express as px
 import streamlit as st
@@ -179,8 +181,8 @@ def show_historical_trends_page():
             if len(selected_currencies) > 1:
                 summary_stats = []
                 for currency in selected_currencies:
-                    currency_data = df_all[df_all["currency"] == currency]["rate"]
-                    if not currency_data.empty:
+                    currency_data = cast(pd.Series, df_all[df_all["currency"] == currency]["rate"])
+                    if len(currency_data):
                         summary_stats.append(
                             {
                                 "Currency": currency,

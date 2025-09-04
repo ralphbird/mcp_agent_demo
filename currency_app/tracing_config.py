@@ -1,6 +1,7 @@
 """OpenTelemetry tracing configuration for currency conversion API."""
 
 import os
+import sys
 from typing import Any
 
 from opentelemetry import trace
@@ -52,8 +53,11 @@ def configure_tracing(
         span_processor = BatchSpanProcessor(otlp_exporter)
         tracer_provider.add_span_processor(span_processor)
 
-    # Add console exporter for development/debugging
-    if enable_console_export or os.getenv("OTEL_CONSOLE_EXPORT", "").lower() == "true":
+    # Add console exporter for development/debugging (but not during testing)
+    is_testing = "pytest" in sys.modules or os.getenv("PYTEST_CURRENT_TEST")
+    if not is_testing and (
+        enable_console_export or os.getenv("OTEL_CONSOLE_EXPORT", "").lower() == "true"
+    ):
         console_exporter = ConsoleSpanExporter()
         console_processor = BatchSpanProcessor(console_exporter)
         tracer_provider.add_span_processor(console_processor)

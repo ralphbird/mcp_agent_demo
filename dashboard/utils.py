@@ -149,6 +149,20 @@ def start_load_test_scenario(scenario: str):
         return None
 
 
+def start_simple_load_test(requests_per_second: float):
+    """Start a load test with just RPS - automatically uses all currency pairs and amounts."""
+    try:
+        response = requests.post(
+            f"{LOAD_TESTER_URL}/api/load-test/start/simple",
+            params={"requests_per_second": requests_per_second},
+            timeout=30,
+        )
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException:
+        return None
+
+
 def start_custom_load_test(config: dict):
     """Start a custom load test."""
     try:

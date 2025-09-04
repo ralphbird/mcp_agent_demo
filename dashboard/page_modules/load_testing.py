@@ -11,6 +11,7 @@ from dashboard.utils import (
     get_scenario_details,
     start_custom_load_test,
     start_load_test_scenario,
+    start_simple_load_test,
     stop_load_test,
 )
 from load_tester.models.load_test import _get_all_amounts, _get_all_currency_pairs
@@ -221,10 +222,14 @@ def show_load_testing_page():
 
     else:
         # Show start options for inactive tests
-        tab1, tab2 = st.tabs(["📋 Scenario Tests", "⚙️ Custom Test"])
+        tab1, tab2, tab3 = st.tabs(["📋 Scenario Tests", "🚀 Simple Test", "⚙️ Custom Test"])
 
         with tab1:
             st.markdown("**Choose from predefined load test scenarios:**")
+            st.info(
+                "💡 All scenario tests automatically use ALL currency pairs with amounts "
+                "appropriate for each from-currency (e.g., JPY: 10K-1M, USD: 100-10K)"
+            )
 
             scenarios = get_load_test_scenarios()
             if scenarios:
@@ -255,9 +260,12 @@ def show_load_testing_page():
                                 "Recommended Duration", f"{scenario_details['duration_seconds']}s"
                             )
                         with col3:
-                            st.metric(
-                                "Currency Pairs", len(scenario_details["config"]["currency_pairs"])
-                            )
+                            st.metric("Currency Pairs", "All Available")
+
+                        st.success(
+                            "🎯 **Auto-Configuration**: This scenario automatically uses ALL currency pairs "
+                            "with amounts appropriate for each from-currency (e.g., JPY uses 10,000-1,000,000, USD uses 100-10,000)"
+                        )
 
                         st.markdown(
                             f"**Expected Behavior:** {scenario_details['expected_behavior']}"
@@ -271,6 +279,43 @@ def show_load_testing_page():
                                 st.rerun()
 
         with tab2:
+            st.markdown("**Quick load test with automatic configuration:**")
+            st.success(
+                "🎯 **Auto-Configuration**: Uses ALL currency pairs with amounts "
+                "appropriate for each from-currency (e.g., JPY: 10K-1M, USD: 100-10K)"
+            )
+
+            simple_rps = st.slider(
+                "Requests per Second",
+                min_value=0.1,
+                max_value=50.0,
+                value=5.0,
+                step=0.1,
+                help="Number of requests to send per second. All currency pairs and appropriate amounts will be used automatically.",
+            )
+
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Currency Pairs", "All Available (42 pairs)")
+            with col2:
+                st.metric("Test Amounts", "Currency-Specific")
+            with col3:
+                st.metric("Target RPS", f"{simple_rps}")
+
+            st.markdown(
+                "**Auto-includes**: USD↔EUR, USD↔GBP, EUR↔GBP, USD↔JPY, USD↔CAD, USD↔AUD, "
+                "USD↔CHF, and all reverse pairs with realistic amounts for each currency."
+            )
+
+            if st.button("🚀 Start Simple Load Test", type="primary"):
+                result = start_simple_load_test(simple_rps)
+                if result:
+                    st.success("Simple load test started successfully!")
+                    st.rerun()
+                else:
+                    st.error("Failed to start load test. Check the API connection.")
+
+        with tab3:
             st.markdown("**Configure a custom load test:**")
 
             col1, col2 = st.columns(2)

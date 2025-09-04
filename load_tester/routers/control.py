@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, HTTPException, Response
 
-from load_tester.models.load_test import LoadTestResponse, StartLoadTestRequest
+from load_tester.models.load_test import LoadTestConfig, LoadTestResponse, StartLoadTestRequest
 from load_tester.models.reports import (
     LoadTestReport,
     format_report_as_markdown,
@@ -26,6 +26,9 @@ async def start_load_test(request: StartLoadTestRequest) -> LoadTestResponse:
     If a load test is already running, this will attempt to ramp to the new configuration
     instead of failing, providing seamless load transitions.
 
+    If currency_pairs or amounts are not specified in the config, they will be
+    automatically populated with all available pairs and appropriate amounts.
+
     Args:
         request: Load test start request with configuration
 
@@ -36,18 +39,60 @@ async def start_load_test(request: StartLoadTestRequest) -> LoadTestResponse:
         HTTPException: If starting or ramping fails
     """
     manager = LoadTestManager()
+
+    # Ensure the config has all currency pairs and amounts if not specified
+    complete_config = request.config.ensure_complete_config()
+
     try:
         # First try to start normally
-        return await manager.start_load_test(request.config)
+        return await manager.start_load_test(complete_config)
     except RuntimeError as e:
         if "already running" in str(e).lower():
             # If test is already running, try ramping instead
             try:
-                return await manager.ramp_to_config(request.config)
+                return await manager.ramp_to_config(complete_config)
             except RuntimeError as ramp_error:
                 raise HTTPException(status_code=409, detail=str(ramp_error)) from ramp_error
         else:
             # Other runtime errors should still fail
+            raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.post("/start/simple")
+async def start_simple_load_test(requests_per_second: float) -> LoadTestResponse:
+    """Start a load test with just RPS - automatically uses all currency pairs and amounts.
+
+    This is a simplified endpoint that automatically configures the load test to use
+    all available currency pairs with amounts appropriate to each pair's from currency.
+
+    Args:
+        requests_per_second: Target requests per second (0.1 to 100.0)
+
+    Returns:
+        Load test response with status and configuration
+
+    Raises:
+        HTTPException: If starting fails or RPS is out of range
+    """
+    if not (0.1 <= requests_per_second <= 100.0):
+        raise HTTPException(
+            status_code=422, detail="requests_per_second must be between 0.1 and 100.0"
+        )
+
+    # Create a full configuration with all pairs and appropriate amounts
+    config = LoadTestConfig.create_full_config(requests_per_second=requests_per_second)
+
+    manager = LoadTestManager()
+    try:
+        return await manager.start_load_test(config)
+    except RuntimeError as e:
+        if "already running" in str(e).lower():
+            # If test is already running, try ramping instead
+            try:
+                return await manager.ramp_to_config(config)
+            except RuntimeError as ramp_error:
+                raise HTTPException(status_code=409, detail=str(ramp_error)) from ramp_error
+        else:
             raise HTTPException(status_code=500, detail=str(e)) from e
 
 

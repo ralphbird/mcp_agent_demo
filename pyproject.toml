@@ -26,8 +26,12 @@ pandas = "^2.2.0"
 pyjwt = "^2.10.0"
 aiohttp = "^3.11.0"
 prometheus-client = "^0.21.0"
-# Shared utilities
+# Shared utilities and logging
 uuid-utils = "^0.9.0"
+structlog = "^24.4.0"
+# OpenTelemetry (needed by common/logging_config.py)
+opentelemetry-api = "^1.26.0"
+opentelemetry-sdk = "^1.26.0"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.12.11"

@@ -59,6 +59,7 @@ make quality                                      # All quality checks (Docker)
 poetry run ruff format currency_app/ load_tester/ dashboard/ tests/  # Format code
 poetry run ruff check --fix currency_app/ load_tester/ dashboard/ tests/  # Lint code
 poetry run pyright currency_app/ load_tester/ dashboard/ tests/  # Type checking
+poetry run python scripts/generate_openapi_spec.py  # Generate OpenAPI spec file
 ```
 
 ## Architecture Overview
@@ -294,6 +295,8 @@ Configured hooks run automatically before each commit:
 - **Pyright**: Type checking (Python files in `currency_app/`, `load_tester/`, `dashboard/`,
   `tests/`)
 - **Markdownlint**: Markdown formatting (all `.md` files)
+- **OpenAPI Generation**: Automatically generates `api_specs/openapi.json` when `currency_app/`
+  Python files change
 - **General**: Trailing whitespace, end-of-file-fixer, YAML/TOML validation
 
 Setup: `pre-commit install` after `poetry install` (one-time)

@@ -33,3 +33,9 @@ repos:
         entry: markdownlint
         types_or: [markdown]
         args: [--fix]
+      - id: generate-openapi-spec
+        name: generate-openapi-spec
+        language: system
+        entry: poetry run python scripts/generate_openapi_spec.py
+        files: ^currency_app/.*\.py$
+        pass_filenames: false

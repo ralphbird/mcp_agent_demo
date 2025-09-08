@@ -26,8 +26,6 @@ services:
   api:
     build: https://github.com/ralphbird/demo_currency_app.git
     container_name: currency-api
-    env_file:
-      - .env
     ports:
       - "8000:8000"
     volumes:
@@ -37,10 +35,8 @@ services:
       - PYTHONPATH=/app
       - DATABASE_URL=postgresql://currency_user:currency_pass@postgres:5432/currency_db
       - JAEGER_ENDPOINT=http://jaeger:4317
-      - JWT_SECRET_KEY=dev-secret-key-change-in-production
-      # PagerDuty Integration Keys (loaded from .env or defaults)
-      - PAGERDUTY_CURRENCY_APP_KEY=${PAGERDUTY_CURRENCY_APP_KEY:-your-pagerduty-integration-key-here}
-      - PAGERDUTY_LOAD_TESTER_KEY=${PAGERDUTY_LOAD_TESTER_KEY:-${PAGERDUTY_CURRENCY_APP_KEY:-your-pagerduty-integration-key-here}}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-dev-secret-key-change-in-production}
+      # Currency API is standalone and doesn't need PagerDuty integration
     logging:
       driver: "json-file"
       options:
@@ -79,8 +75,8 @@ services:
     environment:
       - PYTHONPATH=/app
       - DATABASE_URL=postgresql://currency_user:currency_pass@postgres:5432/currency_db
-      - API_BASE_URL=http://api:8000
-      - LOAD_TESTER_URL=http://load-tester:8001
+      - API_BASE_URL=${API_BASE_URL:-http://api:8000}
+      - LOAD_TESTER_URL=${LOAD_TESTER_URL:-http://load-tester:8001}
       # PagerDuty Integration Keys (loaded from .env or defaults)
       - PAGERDUTY_CURRENCY_APP_KEY=${PAGERDUTY_CURRENCY_APP_KEY:-your-pagerduty-integration-key-here}
       - PAGERDUTY_LOAD_TESTER_KEY=${PAGERDUTY_LOAD_TESTER_KEY:-${PAGERDUTY_CURRENCY_APP_KEY:-your-pagerduty-integration-key-here}}
@@ -122,11 +118,11 @@ services:
       - "8001:8001"
     environment:
       - PYTHONPATH=/app
-      - LOAD_TESTER_TARGET_API_BASE_URL=http://api:8000
-      - LOAD_TESTER_API_HOST=0.0.0.0
-      - LOAD_TESTER_API_PORT=8001
+      - LOAD_TESTER_TARGET_API_BASE_URL=${LOAD_TESTER_TARGET_API_BASE_URL:-http://api:8000}
+      - LOAD_TESTER_API_HOST=${LOAD_TESTER_API_HOST:-0.0.0.0}
+      - LOAD_TESTER_API_PORT=${LOAD_TESTER_API_PORT:-8001}
       - JAEGER_ENDPOINT=http://jaeger:4317
-      - JWT_SECRET_KEY=dev-secret-key-change-in-production
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-dev-secret-key-change-in-production}
       # PagerDuty Integration Keys (loaded from .env or defaults)
       - PAGERDUTY_CURRENCY_APP_KEY=${PAGERDUTY_CURRENCY_APP_KEY:-your-pagerduty-integration-key-here}
       - PAGERDUTY_LOAD_TESTER_KEY=${PAGERDUTY_LOAD_TESTER_KEY:-${PAGERDUTY_CURRENCY_APP_KEY:-your-pagerduty-integration-key-here}}
@@ -230,8 +226,8 @@ services:
       - grafana_data:/var/lib/grafana
       - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
     environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:-admin}
       - GF_USERS_ALLOW_SIGN_UP=false
       # Alerting Configuration
       - GF_ALERTING_ENABLED=true

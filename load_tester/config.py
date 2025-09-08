@@ -22,6 +22,10 @@ class LoadTesterSettings(BaseSettings):
     # Target API Configuration
     target_api_base_url: str = "http://localhost:8000"
 
+    # JWT Configuration (for generating test tokens)
+    jwt_secret_key: str = "dev-secret-key-change-in-production"
+    jwt_algorithm: str = "HS256"
+
     # Load Test Configuration
     default_requests_per_second: float = 1.0
     max_requests_per_second: float = 100.0

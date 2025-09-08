@@ -5,7 +5,6 @@ description = "Currency conversion API for debugging practice"
 authors = ["rbird <rbird@pagerduty.com>"]
 readme = "README.md"
 packages = [
-    { include = "currency_app" },
     { include = "load_tester" },
     { include = "dashboard" },
     { include = "common" }
@@ -109,7 +108,7 @@ quote-style = "double"
 indent-style = "space"
 
 [tool.ruff.lint.isort]
-known-first-party = ["currency_app", "load_tester", "dashboard"]
+known-first-party = ["load_tester", "dashboard"]
 
 [tool.ruff.lint.per-file-ignores]
 "**/tests/*" = ['S101'] # allow use of assert in tests
@@ -122,7 +121,7 @@ convention = "google"        # see python standards for discussion on docstyle
 ignore-var-parameters = true
 
 [tool.pyright]
-include = ["currency_app", "load_tester", "dashboard", "tests"]
+include = ["load_tester", "dashboard", "tests"]
 exclude = ["**/node_modules", "**/__pycache__", ".venv"]
 pythonVersion = "3.12"
 typeCheckingMode = "basic"

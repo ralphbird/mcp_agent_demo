@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from currency_app.auth.jwt_auth import generate_jwt_token
+from load_tester.auth.jwt_utils import generate_jwt_token
 from load_tester.auth.test_users import TestUser
 
 

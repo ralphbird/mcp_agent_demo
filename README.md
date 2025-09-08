@@ -1,12 +1,12 @@
-# Currency Conversion API
+# Currency Conversion System Orchestration
 
-A production-ready FastAPI-based currency conversion system with real-time exchange rates,
-interactive dashboard, and comprehensive monitoring capabilities.
+A complete monitoring and testing ecosystem for currency conversion services. This system
+orchestrates a currency conversion API (deployed from external repository) with comprehensive
+monitoring, testing, and visualization capabilities.
 
 ## ✨ What This System Provides
 
-🏦 **Currency Conversion Service**: Convert between 10 major currencies with simulated
-real-time rates and PostgreSQL persistence
+🌐 **External Currency API Integration**: Deploys currency conversion API from GitHub repository
 📊 **Interactive Web Dashboard**: Streamlit-based interface for currency conversion and
 rate visualization
 🔥 **Load Testing Platform**: Built-in load testing service to validate API performance
@@ -20,13 +20,23 @@ rate visualization
 - Docker & Docker Compose
 - That's it! No other dependencies required
 
-### ⚡ One-Command Setup
+### 🔧 Configuration Setup
+
+Before starting, configure the external currency API repository:
 
 ```bash
-# Clone the repository
+# 1. Clone this orchestration repository
 git clone <repository-url>
 cd mcp_agent_demo
 
+# 2. Update docker-compose.yml with your currency API repository URL
+# Replace 'YOUR_USERNAME' with your GitHub username in:
+# build: https://github.com/YOUR_USERNAME/demo_currency_app.git
+```
+
+### ⚡ One-Command Setup
+
+```bash
 # Start everything with one command
 make
 ```

@@ -22,11 +22,9 @@ services:
     networks:
       - currency-network
 
-  # FastAPI Currency Conversion API
+  # FastAPI Currency Conversion API (built from GitHub repository)
   api:
-    build:
-      context: .
-      target: api
+    build: https://github.com/ralphbird/demo_currency_app.git
     container_name: currency-api
     env_file:
       - .env

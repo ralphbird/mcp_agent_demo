@@ -5,7 +5,6 @@ import contextlib
 from datetime import UTC, datetime
 
 from load_tester.logging_config import get_logger
-from load_tester.middleware.metrics import record_load_test_start, record_load_test_stop
 from load_tester.models.load_test import (
     LoadTestConfig,
     LoadTestResponse,
@@ -57,8 +56,7 @@ class ConcurrentLoadTestInstance:
             # Start stats update task
             self.stats_task = asyncio.create_task(self._update_stats_periodically())
 
-            # Record metrics
-            record_load_test_start(self.config.requests_per_second)
+            # Metrics recording removed for load_tester
 
             self.status = LoadTestStatus.RUNNING
             logger.info(
@@ -92,8 +90,7 @@ class ConcurrentLoadTestInstance:
                 await self.stats_task
             self.stats_task = None
 
-        # Record metrics
-        record_load_test_stop()
+        # Metrics recording removed for load_tester
 
         self.status = LoadTestStatus.STOPPED
         self.stopped_at = datetime.now(UTC)

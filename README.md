@@ -1,73 +1,49 @@
-# Currency Conversion System Orchestration
+# Load Tester and Dashboard System
 
-A complete monitoring and testing ecosystem for currency conversion services. This system
-orchestrates a currency conversion API (deployed from external repository) with comprehensive
-monitoring, testing, and visualization capabilities.
+A comprehensive load testing and dashboard system for external currency conversion APIs.
+This system provides powerful load testing capabilities and analytics for currency services
+running on external endpoints.
 
 ## ✨ What This System Provides
 
-🌐 **External Currency API Integration**: Deploys currency conversion API from GitHub repository
-📊 **Interactive Web Dashboard**: Streamlit-based interface for currency conversion and
-rate visualization
-🔥 **Load Testing Platform**: Built-in load testing service to validate API performance
-📈 **Production Monitoring**: Prometheus metrics with Grafana dashboards and distributed tracing
-🐘 **PostgreSQL Database**: Production-ready database with connection pooling and data persistence
+📊 **Interactive Web Dashboard**: Streamlit-based interface for load testing and analytics
+🔥 **Load Testing Platform**: Built-in load testing service with configurable scenarios
+📈 **Performance Analytics**: Real-time metrics and performance visualization
+🎯 **External API Testing**: Test any currency conversion API running on localhost:8000
 
 ## 🚀 Quick Start (Docker - Recommended)
 
 ### Prerequisites
 
 - Docker & Docker Compose
-- That's it! No other dependencies required
-
-### 🔧 Configuration Setup
-
-Before starting, configure the external currency API repository:
-
-```bash
-# 1. Clone this orchestration repository
-git clone <repository-url>
-cd mcp_agent_demo
-
-# 2. Update docker-compose.yml with your currency API repository URL
-# Replace 'YOUR_USERNAME' with your GitHub username in:
-# build: https://github.com/YOUR_USERNAME/demo_currency_app.git
-```
+- A currency conversion API running on localhost:8000
 
 ### ⚡ One-Command Setup
 
 ```bash
-# Start everything with one command
-make
+# Start load tester and dashboard
+make up
 ```
 
-This will start all services and you'll see:
+This will start the load testing services:
 
 ```text
 🚀 Available at:
-   💰 API: http://localhost:8000
    📊 Dashboard: http://localhost:8501
    🔥 Load Tester: http://localhost:8001
-   🐘 PostgreSQL: localhost:5432 (currency_user/currency_pass)
-   📈 Prometheus: http://localhost:9090
-   📉 Grafana: http://localhost:3000 (admin/admin)
-   🔍 Jaeger: http://localhost:16686
 ```
 
 ### 🎯 What You Get Out of the Box
 
-- **Currency API** at <http://localhost:8000> with interactive docs at `/docs`
-- **Web Dashboard** at <http://localhost:8501> for conversions and charts
-- **Load Tester** at <http://localhost:8001> for performance testing
-- **PostgreSQL Database** at localhost:5432 with persistent data storage
-- **Monitoring Stack** with Prometheus, Grafana, and Jaeger for observability
-- **PagerDuty Alerting** for critical issue notifications (see `docs/PAGERDUTY_SETUP.md`)
-- **30+ days of demo data** automatically generated in PostgreSQL
+- **Load Testing Dashboard** at <http://localhost:8501> for testing and analytics
+- **Load Tester API** at <http://localhost:8001> with interactive docs at `/docs`
+- **File-based Logging** for load tester operations
+- **Configurable Test Scenarios** with real-time performance monitoring
 
 ### 🐳 Docker Commands
 
 ```bash
-make up                        # Start all services
+make up                        # Start load testing services
 make down                      # Stop all services
 make logs                      # View service logs
 make rebuild                   # Rebuild and restart everything
@@ -76,63 +52,37 @@ make clean                     # Clean all Docker resources
 
 ## 🚀 Core Features
 
-### Currency API Features
-
-- **Multi-Currency Support**: Convert between USD, EUR, GBP, JPY, AUD, CAD, CHF, CNY, SEK, NZD
-- **Real-Time Rates**: Simulated exchange rates that update dynamically
-- **Financial Precision**: Proper decimal handling with banker's rounding for accuracy
-- **Complete Audit Trail**: Every conversion tracked with unique IDs and timestamps
-- **Comprehensive Validation**: Structured error responses with detailed validation messages
-
-### Interactive Dashboard
-
-- **Currency Converter**: Real-time conversion with rate visualization
-- **Exchange Rate Tables**: Current rates display with comparison tools
-- **Historical Charts**: Time-series visualizations of rate trends over 30+ days
-- **Currency Analytics**: Strength indicators and statistical summaries
-- **Rate Comparison**: Side-by-side currency performance analysis
-
 ### Load Testing Service
 
-- **Performance Testing**: Configurable load tests for API endpoints
+- **Performance Testing**: Configurable load tests for external API endpoints
 - **Real-Time Monitoring**: Live statistics during test execution
 - **Custom Scenarios**: Adjustable request rates, currency pairs, and test duration
 - **Results Tracking**: Detailed performance metrics and response time analysis
+- **File Logging**: All operations logged to files for analysis
+- **JWT Authentication**: Support for authenticated API testing
 
-### Production-Ready Features
+### Interactive Dashboard
 
-- **Health Monitoring**: Basic and detailed health check endpoints with dependency validation
-- **Prometheus Metrics**: HTTP requests, response times, conversion counts, and database operations
-- **Historical Data**: 30+ days of exchange rate history with time-series analysis
-- **Docker Deployment**: Complete containerization with orchestration and persistent storage
-- **Configuration Management**: Environment-based settings with validation
+- **Load Test Control**: Start, stop, and monitor load tests
+- **Performance Analytics**: Real-time metrics and response time visualization
+- **Test Results**: Comprehensive test reports and failure analysis
+- **Configuration Management**: Easy setup of test scenarios and parameters
 
-### Database Architecture
+### External API Testing
 
-- **Production Database**: PostgreSQL 15 with connection pooling (10 base + 20 overflow connections)
-- **Data Persistence**: Volume-backed storage maintains data between container restarts
-- **ACID Compliance**: Full transaction support with proper isolation and consistency
-- **Testing Database**: SQLite for fast, isolated test execution (228+ tests)
-- **Auto-Initialization**: Database tables and demo data created automatically on startup
+- **Currency Conversion Testing**: Automated testing of currency conversion endpoints
+- **Rate Lookup Testing**: Performance testing of exchange rate retrieval
+- **Multi-scenario Testing**: Support for different testing patterns and load profiles
+- **Error Injection**: Configurable error rates for resilience testing
 
-### Monitoring & Observability
+## 🛠️ Local Development
 
-- **Distributed Tracing**: OpenTelemetry integration with Jaeger for end-to-end request tracing
-- **Metrics Endpoint**: `/metrics` for Prometheus scraping
-- **Pre-configured Grafana**: Dashboards for performance monitoring
-- **Request Correlation**: UUID-based tracking with trace context for debugging and analytics
-- **Database Monitoring**: Connection health and query performance tracking
-- **Structured Logging**: JSON logs with trace correlation and business context
+If you prefer to run without Docker:
 
-## 🛠️ Alternative Setup (Local Development)
-
-If you prefer to run without Docker (uses SQLite for development, PostgreSQL available via Docker):
-
-### Local Development Prerequisites
+### Local Prerequisites
 
 - Python 3.12+
 - Poetry
-- Node.js (for markdown linting)
 
 ### Setup
 
@@ -140,59 +90,46 @@ If you prefer to run without Docker (uses SQLite for development, PostgreSQL ava
 # Install dependencies
 poetry install
 
-# Generate demo data
-poetry run python scripts/generate_demo_data.py
-
-# Run the API server
-poetry run uvicorn currency_app.main:app --reload
+# Run the load tester API
+poetry run python -m load_tester.main
 
 # In another terminal, run the dashboard
 poetry run streamlit run dashboard/app.py
 ```
 
-The API will be available at:
+The services will be available at:
 
-- **Server**: <http://localhost:8000>
-- **Documentation**: <http://localhost:8000/docs>
+- **Load Tester API**: <http://localhost:8001>
 - **Dashboard**: <http://localhost:8501>
 
 ## 🧪 Quick Test & Verification
 
-Once your services are running, you can quickly test the system:
+Once your services are running, you can test the load tester:
 
 ```bash
-# Quick health check
-curl http://localhost:8000/health
+# Check load tester health
+curl http://localhost:8001/
 
-# Currency conversion example
-curl -X POST "http://localhost:8000/api/v1/convert" \
+# Start a load test
+curl -X POST "http://localhost:8001/api/load-test/start" \
   -H "Content-Type: application/json" \
-  -d '{"amount": 100.00, "from_currency": "USD", "to_currency": "EUR"}'
+  -d '{
+    "requests_per_second": 10,
+    "duration_seconds": 60,
+    "currency_pairs": [["USD", "EUR"], ["GBP", "USD"]]
+  }'
 
-# Get current exchange rates
-curl http://localhost:8000/api/v1/rates
+# Check load test status
+curl http://localhost:8001/api/load-test/status
 ```
 
-## 🔍 Distributed Tracing
-
-The system includes comprehensive distributed tracing with OpenTelemetry and Jaeger.
-When running with Docker, access the Jaeger UI at <http://localhost:16686> to view:
-
-- **End-to-End Request Tracing**: Track requests across all services
-- **Business Logic Spans**: Currency conversions, rate lookups, and validations
-- **Database Query Tracing**: SQLAlchemy instrumentation for database operations
-- **HTTP Request Tracing**: FastAPI auto-instrumentation for all endpoints
-- **Error Context**: Rich error information with trace correlation
-
-## �️ Development & Testing
+## 🛠️ Development & Testing
 
 ### Docker-based Development
 
-For development with auto-reload and debugging:
-
 ```bash
-# Start with development mode (mounts source code)
-docker-compose up --build
+# Start with development mode
+make up
 
 # View logs for debugging
 make logs
@@ -206,15 +143,9 @@ make quality
 
 ### Local Development Commands
 
-If running locally without Docker:
-
 ```bash
 # Install and setup
 poetry install
-poetry run python scripts/generate_demo_data.py
-
-# Development server with auto-reload
-poetry run uvicorn currency_app.main:app --reload
 
 # Run tests
 poetry run pytest tests/ -v
@@ -225,67 +156,41 @@ poetry run ruff check .
 poetry run pyright
 ```
 
-## �📖 API Endpoints
+## 📖 API Endpoints
 
-### Core Endpoints
+### Load Testing Endpoints
 
-- `POST /api/v1/convert` - Convert currency amounts
-- `GET /api/v1/rates` - Get current exchange rates for all supported currencies
-- `GET /api/v1/rates/history` - Get historical exchange rates with filtering options
-- `GET /health` - Basic health check
-- `GET /health/detailed` - Detailed system health with database connectivity
-- `GET /metrics` - Prometheus metrics for monitoring
-- `GET /` - API information and links
+- `POST /api/load-test/start` - Start a new load test
+- `POST /api/load-test/stop` - Stop the current load test
+- `GET /api/load-test/status` - Get current load test status
+- `GET /api/load-test/report` - Get load test results
+- `GET /api/load-test/scenarios` - List available test scenarios
+- `GET /` - API information and available endpoints
 
 ### Example API Usage
 
-**Convert Currency:**
+**Start Load Test:**
 
 ```json
-POST /api/v1/convert
+POST /api/load-test/start
 {
-  "amount": 100.00,
-  "from_currency": "USD",
-  "to_currency": "EUR"
+  "requests_per_second": 50,
+  "duration_seconds": 300,
+  "currency_pairs": [["USD", "EUR"], ["GBP", "JPY"]],
+  "amounts": [100, 500, 1000]
 }
 
 Response:
 {
-  "conversion_id": "uuid",
-  "amount": 100.00,
-  "converted_amount": 85.23,
-  "exchange_rate": 0.8523,
-  "from_currency": "USD",
-  "to_currency": "EUR",
-  "rate_timestamp": "2025-08-29T10:30:00Z",
-  "conversion_timestamp": "2025-08-29T10:30:15Z"
-}
-```
-
-**Get Current Rates:**
-
-```json
-GET /api/v1/rates
-
-Response:
-{
-  "base_currency": "USD",
-  "rates": [
-    {
-      "currency": "USD",
-      "rate": 1.0000,
-      "last_updated": "2025-08-29T10:30:00Z"
-    },
-    {
-      "currency": "EUR",
-      "rate": 0.8523,
-      "last_updated": "2025-08-29T10:30:00Z"
-    }
-  ],
-  "timestamp": "2025-08-29T10:30:15Z",
-  "metadata": {
-    "rate_source": "simulated",
-    "total_currencies": "10"
+  "status": "running",
+  "config": {
+    "requests_per_second": 50,
+    "duration_seconds": 300
+  },
+  "stats": {
+    "total_requests": 0,
+    "successful_requests": 0,
+    "failed_requests": 0
   }
 }
 ```
@@ -294,9 +199,8 @@ Response:
 
 ```text
 mcp_agent_demo/
-├── currency_app/              # Currency conversion API service
-├── dashboard/                 # Streamlit web dashboard
 ├── load_tester/               # Load testing service
+├── dashboard/                 # Streamlit web dashboard
 ├── docker-compose.yml         # Docker orchestration
 ├── Dockerfile                 # Multi-stage Docker build
 ├── Makefile                   # Development commands
@@ -305,40 +209,23 @@ mcp_agent_demo/
 
 ## 🧪 Testing
 
-The project includes comprehensive tests with 228+ test cases using SQLite for fast execution:
+The project includes comprehensive tests:
 
 ```bash
-# Run all tests (uses SQLite for speed)
+# Run all tests
 make test
 
 # Run specific test modules
-poetry run pytest tests/currency_app/ -v        # Currency conversion tests
 poetry run pytest tests/load_tester/ -v         # Load testing tests
+poetry run pytest tests/dashboard/ -v           # Dashboard tests
 ```
-
-### PagerDuty Integration Testing
-
-Test the PagerDuty alerting integration:
-
-```bash
-# Test PagerDuty integration (requires .env configuration)
-set -a && source .env && set +a && poetry run python scripts/test_pagerduty.py
-```
-
-See `docs/PAGERDUTY_SETUP.md` for complete configuration and setup instructions.
-
-**Database Testing Strategy**:
-
-- **Local Tests**: Use SQLite with isolated databases per test file for speed
-- **Docker Production**: Uses PostgreSQL with full ACID compliance and persistence
-- **Test Isolation**: Each test suite uses separate databases to prevent interference
 
 ## 🤝 Contributing
 
 This project follows modern development practices:
 
 - **Code Quality**: Ruff formatting + linting, Pyright type checking
-- **Testing**: Comprehensive test coverage with 228+ tests
+- **Testing**: Comprehensive test coverage
 - **Documentation**: Clear README and API documentation
 - **Container First**: Docker-based workflows
 

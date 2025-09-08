@@ -4,22 +4,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a comprehensive orchestration system for currency conversion services, designed to demonstrate
-advanced monitoring, observability, and containerization practices. The system includes:
+This is a load testing and dashboard system designed to test external currency conversion services.
+The system calls an external currency API to perform load testing and provide analytics. It includes:
 
-- **External Currency API**: Deploys FastAPI currency service from external GitHub repository
-- **Interactive Dashboard**: Streamlit web interface for conversions and analytics
-- **Load Testing Service**: Built-in performance testing with configurable scenarios
-- **Full Observability Stack**: Prometheus metrics, Grafana dashboards, and Jaeger tracing
-- **Production Docker Deployment**: Complete containerized setup with monitoring
+- **Load Testing Service**: Performance testing with configurable scenarios for external APIs
+- **Interactive Dashboard**: Streamlit web interface for testing and analytics
+- **External Service Integration**: Calls external currency conversion API
+- **Docker Deployment**: Containerized load testing setup
 
 ## Development Commands (Docker-First)
 
 ### Quick Start
 
 ```bash
+# First, start the external currency service (from separate repo)
+# Then start the load tester and dashboard:
 make              # Show help with available commands (default)
-make up           # Start all services with full monitoring stack
+make up           # Start load tester and dashboard services
 make down         # Stop all services
 make logs         # View service logs (Ctrl+C to exit)
 ```
@@ -84,7 +85,7 @@ currency_app/
 │   ├── conversion.py    # Pydantic models for API requests/responses
 │   └── database.py      # SQLAlchemy ORM models
 └── middleware/
-    ├── metrics.py       # Prometheus metrics collection
+    # Note: metrics.py removed - no monitoring in simplified system
     └── logging.py       # Request logging middleware
 
 load_tester/
@@ -102,17 +103,12 @@ load_tester/
 ├── routers/             # Load test API endpoints
 │   └── control.py       # Load test control endpoints
 └── middleware/
-    ├── metrics.py       # Load tester metrics collection
     └── logging.py       # Load tester logging
 
 dashboard/
 └── app.py               # Streamlit dashboard application
 
-docker/                  # Docker configuration files
-├── grafana/             # Grafana provisioning and dashboards
-├── loki/                # Loki logging configuration
-├── prometheus.yml       # Prometheus scraping configuration
-└── promtail/            # Promtail log shipping configuration
+# Note: docker/ directory removed - no monitoring configuration needed
 ```
 
 ### Key Architectural Patterns
@@ -126,8 +122,7 @@ managed via FastAPI dependencies (`get_db()`). Test isolation uses separate test
 **Service Layer**: Business logic separated into dedicated services with clear interfaces
 and comprehensive error handling for both currency operations and load testing.
 
-**Observability Stack**: Complete observability with Prometheus metrics, Grafana dashboards,
-Jaeger distributed tracing, and structured logging. All services instrumented with OpenTelemetry.
+**Logging**: File-based structured logging for load tester operations and debugging.
 
 **Testing Strategy**: 228+ tests with database isolation. Each test suite uses separate
 test databases in `tests/currency_app/databases/`. Integration tests override database dependencies.
@@ -146,8 +141,7 @@ test databases in `tests/currency_app/databases/`. Integration tests override da
 
 **Multi-stage Build**: Single Dockerfile with separate stages for API, Dashboard, and Load Tester services.
 **Service Orchestration**: docker-compose.yml with persistent volumes, health checks, and
-complete monitoring stack (Prometheus + Grafana + Jaeger) included by default.
-**Observability Stack**: All services start together with full observability - no optional profiles needed.
+**Simplified Architecture**: Load tester and dashboard services only - no monitoring dependencies.
 
 ## Test Structure and Patterns
 
@@ -161,10 +155,7 @@ tests/
 │   ├── test_rates_history_service.py    # Historical data service tests
 │   ├── test_models.py                   # Pydantic model validation tests
 │   ├── test_database.py                 # Database connection and migration tests
-│   ├── test_metrics_endpoint.py         # Metrics endpoint tests
-│   ├── test_metrics_integration.py      # Metrics integration tests
-│   ├── test_metrics_middleware.py       # Prometheus middleware tests
-│   ├── test_metrics_utilities.py        # Metrics utilities tests
+# Note: Metrics tests removed - no monitoring in load_tester
 │   └── databases/                       # Isolated test databases
 ├── load_tester/
 │   ├── test_currency_patterns.py        # Currency pattern tests
@@ -193,65 +184,60 @@ test_engine = create_engine(f"sqlite:///{test_db_path}")
 **Important**: Always clean up database dependency overrides in test teardown to prevent
 test pollution between different test suites.
 
-### Prometheus Metrics Testing
+### Load Testing Patterns
 
-When testing Prometheus Counter metrics, they create both `_total` and `_created` samples:
-
-```python
-# Correct pattern for testing Counter metrics
-samples = list(counter.collect())[0].samples
-total_samples = [s for s in samples if s.name.endswith('_total')]
-assert len(total_samples) > 0
-```
+Load tests use configurable scenarios and patterns for comprehensive API testing.
 
 ## Available Services and URLs
 
-When running with `make` (Docker), these services are available:
+When running with `make up`, these load testing services are available:
 
-- **Currency API**: <http://localhost:8000> (FastAPI with interactive docs at /docs)
-- **Streamlit Dashboard**: <http://localhost:8501> (Interactive web interface)
+- **Streamlit Dashboard**: <http://localhost:8501> (Load testing interface and analytics)
 - **Load Tester API**: <http://localhost:8001> (Load testing service with docs at /docs)
-- **PostgreSQL Database**: localhost:5432 (Database server - currency_user/currency_pass)
-- **Prometheus**: <http://localhost:9090> (Metrics collection and querying)
-- **Grafana**: <http://localhost:3000> (Dashboards and alerting - login: admin/admin)
-- **Jaeger**: <http://localhost:16686> (Distributed tracing UI)
 
-## PagerDuty Alerting
+**External Service Dependencies**:
 
-The system includes comprehensive alerting integration with PagerDuty:
+- **Currency API**: <http://localhost:8000> (External currency service - must be running separately)
 
-- **Critical Alerts**: API down, high error rates, database issues
-- **Warning Alerts**: High latency, high traffic, load test failures
-- **Automated Notifications**: Real-time incident creation and resolution
-- **Setup Guide**: See `docs/PAGERDUTY_SETUP.md` for complete configuration
+**Note**: The load tester calls the external currency API running at `localhost:8000`. Ensure the
+external currency service is started before running the load tester.
 
-**Quick Setup**:
+## External Currency Service Setup
 
-1. Copy `.env.example` to `.env`
-2. Set your `PAGERDUTY_CURRENCY_APP_KEY` in `.env`
-3. Run `make rebuild` to restart with alerting enabled
-4. Test integration: `set -a && source .env && set +a && poetry run python scripts/test_pagerduty.py`
+This load testing system requires an external currency conversion API to test against.
 
-## Distributed Tracing
+**Prerequisites**:
 
-The system includes comprehensive distributed tracing with OpenTelemetry and Jaeger:
+1. Start the external currency service on `localhost:8000`
+2. Ensure the currency service is healthy and responding
+3. The load tester will automatically discover and test available endpoints
 
-### Tracing Features
+**Service Communication**:
 
-- **End-to-End Request Tracing**: Track requests across currency API, load tester, and dashboard
-- **Business Logic Spans**: Detailed spans for currency conversions, rate lookups, validations
-- **Database Query Tracing**: Automatic SQLAlchemy instrumentation for all database operations
-- **HTTP Request Tracing**: FastAPI auto-instrumentation for all HTTP endpoints and external requests
-- **Cross-Service Correlation**: Trace propagation between currency API and load tester services
-- **Error Context**: Rich error information with trace correlation and business context
+- Load tester calls external API at `http://localhost:8000` (or configured endpoint)
+- Dashboard displays metrics from both load tester and external service responses
+- No database or monitoring dependencies - external service handles its own observability
 
-### Using Traces
+## Load Testing Features
 
-Access Jaeger UI at <http://localhost:16686> when running with Docker to:
+The load testing system provides comprehensive testing capabilities:
 
-1. **Service Selection**: Choose `currency-api` or `load-tester` services
-2. **Operation Filtering**: Filter by specific endpoints like `/api/v1/convert` or `/api/v1/rates`
-3. **Tag Search**: Search by currency pairs, amounts, or error types
+### Testing Capabilities
+
+- **Configurable Load Patterns**: Variable request rates, burst testing, and sustained load
+- **Currency Conversion Testing**: Automated testing of currency conversion endpoints
+- **Rate Lookup Testing**: Performance testing of exchange rate retrieval
+- **Multi-scenario Testing**: Support for different testing scenarios and patterns
+- **Real-time Metrics**: Live performance monitoring and response time tracking
+- **Error Analysis**: Detailed error tracking and failure analysis
+
+### Using the Load Tester
+
+Access the Load Tester API at <http://localhost:8001> to:
+
+1. **Configure Tests**: Set up load testing scenarios via API endpoints
+2. **Monitor Progress**: Real-time monitoring of test execution and metrics
+3. **View Results**: Comprehensive test reports and performance analytics
 4. **Performance Analysis**: View request timing, database query performance, and bottlenecks
 
 ## Configuration and Environment
@@ -266,15 +252,8 @@ services communicate via internal networking (`api:8000` for dashboard to API co
 
 - `DATABASE_URL`: Database connection string (PostgreSQL for Docker, SQLite for local testing)
 - `API_BASE_URL`: Dashboard API endpoint (defaults to localhost for local, api:8000 for Docker)
-- `JAEGER_ENDPOINT`: OpenTelemetry collector endpoint for tracing
-- `OTEL_SERVICE_NAME`: Service name for distributed tracing
-
-**PostgreSQL Configuration (Docker)**:
-
-- Database: `currency_db`
-- Username: `currency_user`
-- Password: `currency_pass`
-- Port: `5432` (internal), exposed on `localhost:5432`
+- `LOAD_TESTER_LOG_FILE`: File path for load tester logging
+- `JWT_SECRET_KEY`: Secret key for load tester JWT authentication
 
 ## Development Best Practices in Codebase
 
@@ -282,7 +261,7 @@ services communicate via internal networking (`api:8000` for dashboard to API co
 **Error Handling**: Custom exceptions (`InvalidCurrencyError`), structured error responses
 **Financial Precision**: Uses `Decimal` type with banker's rounding (`ROUND_HALF_EVEN`)
 **Request Validation**: Pydantic models validate all inputs with detailed error messages
-**Observability**: Request tracing with UUIDs, comprehensive metrics, and distributed tracing
+**Logging**: File-based structured logging with request correlation
 **Load Testing**: Built-in load testing service for performance validation
 
 ## Pre-commit Hooks
@@ -314,8 +293,7 @@ Setup: `pre-commit install` after `poetry install` (one-time)
 **Database Sessions**: Always use dependency injection via `get_db()` for database access
 **Database**: Production uses PostgreSQL, tests use isolated SQLite databases in `tests/*/databases/`
 **Test Isolation**: Each test file uses separate SQLite databases for fast, isolated testing
-**Metrics Testing**: Prometheus Counter metrics create both `_total` and `_created` samples
-**Tracing**: All services instrumented with OpenTelemetry for request correlation
+**Load Testing**: Focus on external API testing with configurable scenarios
 **Docker First**: Primary development workflow uses Docker containers with `make` commands
 **Financial Data**: Always use `Decimal` types for currency amounts and exchange rates
 **PostgreSQL**: Connection pooling configured with 10 base connections, 20 overflow connections

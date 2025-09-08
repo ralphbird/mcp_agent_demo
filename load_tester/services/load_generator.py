@@ -10,7 +10,6 @@ from pydantic import ValidationError
 from load_tester.auth.jwt_generator import get_jwt_token_manager
 from load_tester.auth.test_users import get_random_test_user
 from load_tester.config import settings
-from load_tester.middleware.metrics import record_load_test_request
 from load_tester.models.load_test import LoadTestConfig, LoadTestStats
 from load_tester.services.currency_patterns import CurrencyPatterns
 
@@ -194,16 +193,7 @@ class LoadGenerator:
                 result, request_data = await self._execute_single_request()
                 await self._update_stats(result)
 
-                # Record metrics
-                from_curr = request_data.get("from_currency")
-                to_curr = request_data.get("to_currency")
-                record_load_test_request(
-                    "/api/v1/convert",
-                    success=result.success,
-                    duration_seconds=result.response_time_ms / 1000,
-                    from_currency=from_curr if isinstance(from_curr, str) else None,
-                    to_currency=to_curr if isinstance(to_curr, str) else None,
-                )
+                # Metrics recording removed for load_tester
 
                 # Calculate current interval from config (allows for dynamic ramping)
                 current_interval = 1.0 / max(self.config.requests_per_second, 0.1)

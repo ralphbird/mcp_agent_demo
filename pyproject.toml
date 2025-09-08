@@ -6,7 +6,6 @@ authors = ["rbird <rbird@pagerduty.com>"]
 readme = "README.md"
 packages = [
     { include = "load_tester" },
-    { include = "dashboard" },
     { include = "common" }
 ]
 

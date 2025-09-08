@@ -42,11 +42,12 @@ def add_trace_context(logger: Any, method_name: str, event_dict: dict[str, Any])
     return event_dict
 
 
-def configure_structlog(service_name: str) -> None:
+def configure_structlog(service_name: str, log_file_path: str | None = None) -> None:
     """Configure structlog for a specific service.
 
     Args:
         service_name: Name of the service (e.g., 'currency-api', 'load-tester')
+        log_file_path: Optional path to log file. If provided, logs to file instead of stdout.
     """
     # Configure processors that transform log entries
     processors = [
@@ -87,16 +88,22 @@ def configure_structlog(service_name: str) -> None:
     for handler in root_logger.handlers[:]:
         root_logger.removeHandler(handler)
 
-    # Create console handler
-    console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setLevel(logging.INFO)
+    # Create appropriate handler based on configuration
+    if log_file_path:
+        # Create file handler
+        handler = logging.FileHandler(log_file_path)
+    else:
+        # Create console handler
+        handler = logging.StreamHandler(sys.stdout)
+
+    handler.setLevel(logging.INFO)
 
     # Use plain formatter since structlog handles formatting
     plain_formatter = logging.Formatter("%(message)s")
-    console_handler.setFormatter(plain_formatter)
+    handler.setFormatter(plain_formatter)
 
     # Add handler to root logger
-    root_logger.addHandler(console_handler)
+    root_logger.addHandler(handler)
 
     # Configure specific loggers
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)

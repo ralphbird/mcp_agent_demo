@@ -6,7 +6,6 @@ from datetime import UTC, datetime
 from typing import ClassVar
 
 from load_tester.logging_config import get_logger
-from load_tester.middleware.metrics import record_load_test_start, record_load_test_stop
 from load_tester.models.load_test import (
     LoadTestConfig,
     LoadTestResponse,
@@ -90,8 +89,7 @@ class LoadTestManager:
                 # Start stats update task
                 self._stats_task = asyncio.create_task(self._update_stats_periodically())
 
-                # Record metrics
-                record_load_test_start(config.requests_per_second)
+                # Metrics recording removed for load_tester
 
                 self._status = LoadTestStatus.RUNNING
                 return self._get_current_response()
@@ -124,10 +122,6 @@ class LoadTestManager:
                 raise RuntimeError(msg)
 
             try:
-                # Record the old and new RPS for metrics
-                old_rps = self._config.requests_per_second if self._config else 0.0
-                new_rps = config.requests_per_second
-
                 # Update manager configuration
                 self._config = config
                 self._error_message = None
@@ -135,9 +129,7 @@ class LoadTestManager:
                 # Ramp the load generator to new configuration
                 await self._load_generator.ramp_to_config(config)
 
-                # Update metrics if RPS changed
-                if old_rps != new_rps:
-                    record_load_test_start(new_rps)  # Record new load level
+                # Metrics recording removed for load_tester
 
                 return self._get_current_response()
 
@@ -170,8 +162,7 @@ class LoadTestManager:
                     await self._stats_task
                 self._stats_task = None
 
-            # Record metrics
-            record_load_test_stop()
+            # Metrics recording removed for load_tester
 
             self._status = LoadTestStatus.STOPPED
             self._stopped_at = datetime.now(UTC)

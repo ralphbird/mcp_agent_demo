@@ -2,11 +2,10 @@
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Response
+from fastapi import FastAPI
 
 from load_tester.logging_config import get_logger
 from load_tester.middleware.logging import LoggingMiddleware
-from load_tester.middleware.metrics import LoadTesterPrometheusMiddleware, get_load_tester_metrics
 from load_tester.routers import control
 
 # Structlog is configured automatically when logging_config is imported
@@ -33,9 +32,8 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Add middleware (order matters - logging should be first to capture all requests)
+# Add middleware
 app.add_middleware(LoggingMiddleware)
-app.add_middleware(LoadTesterPrometheusMiddleware)
 
 # Include routers
 app.include_router(control.router)
@@ -67,19 +65,8 @@ async def root() -> dict[str, str | dict[str, str]]:
             "concurrent_stop_all": "/api/load-test/concurrent/stop-all",
             "concurrent_status_all": "/api/load-test/concurrent/status",
             "concurrent_active": "/api/load-test/concurrent/active",
-            "metrics": "/metrics",
         },
     }
-
-
-@app.get("/metrics")
-async def metrics() -> Response:
-    """Prometheus metrics endpoint.
-
-    Returns:
-        Prometheus metrics in text format
-    """
-    return Response(content=get_load_tester_metrics(), media_type="text/plain")
 
 
 if __name__ == "__main__":

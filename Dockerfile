@@ -1,4 +1,4 @@
-# Multi-stage Docker build for Currency Conversion API
+# Multi-stage Docker build for Load Testing Services
 FROM python:3.12.11-slim AS base
 
 # Set environment variables
@@ -35,14 +35,12 @@ FROM base AS dashboard
 
 # Copy application code
 COPY dashboard/ ./dashboard/
+COPY load_tester/ ./load_tester/
 COPY common/ ./common/
 COPY README.md ./
 
 # Install the application (including the current project)
 RUN poetry install --only=main
-
-# Create directories for data persistence
-RUN mkdir -p /app/data
 
 # Expose port
 EXPOSE 8501

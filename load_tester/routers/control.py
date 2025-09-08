@@ -14,6 +14,7 @@ from load_tester.models.scenarios import (
     get_scenario_config,
     list_available_scenarios,
 )
+from load_tester.services.concurrent_load_test_manager import ConcurrentLoadTestManager
 from load_tester.services.load_test_manager import LoadTestManager
 
 router = APIRouter(prefix="/api/load-test", tags=["load-test"])
@@ -80,9 +81,9 @@ async def start_simple_load_test(
     Raises:
         HTTPException: If starting fails or RPS is out of range
     """
-    if not (0.1 <= requests_per_second <= 100.0):
+    if not (0.1 <= requests_per_second <= 1000.0):
         raise HTTPException(
-            status_code=422, detail="requests_per_second must be between 0.1 and 100.0"
+            status_code=422, detail="requests_per_second must be between 0.1 and 1000.0"
         )
 
     if error_injection_enabled and not (0.0 <= error_injection_rate <= 0.5):
@@ -291,3 +292,114 @@ async def get_scenario_report(scenario: LoadTestScenario) -> LoadTestReport:
         return generate_load_test_report(response, scenario_name=scenario_config.name)
     except KeyError as e:
         raise HTTPException(status_code=404, detail=f"Scenario '{scenario}' not found") from e
+
+
+# Global concurrent load test manager instance
+concurrent_manager = ConcurrentLoadTestManager()
+
+
+@router.post("/concurrent/{test_id}/start")
+async def start_concurrent_load_test(
+    test_id: str, request: StartLoadTestRequest
+) -> LoadTestResponse:
+    """Start a concurrent load test with a unique identifier.
+
+    This allows multiple load tests to run simultaneously, useful for simulating
+    baseline traffic alongside attack traffic.
+
+    Args:
+        test_id: Unique identifier for this load test instance
+        request: Load test start request with configuration
+
+    Returns:
+        Load test response with status and configuration
+
+    Raises:
+        HTTPException: If test_id already exists and is running, or if starting fails
+    """
+    # Ensure the config has all currency pairs and amounts if not specified
+    complete_config = request.config.ensure_complete_config()
+
+    try:
+        return await concurrent_manager.start_load_test(test_id, complete_config)
+    except RuntimeError as e:
+        raise HTTPException(status_code=409, detail=str(e)) from e
+
+
+@router.post("/concurrent/{test_id}/stop")
+async def stop_concurrent_load_test(test_id: str) -> LoadTestResponse:
+    """Stop a specific concurrent load test.
+
+    Args:
+        test_id: Identifier of the load test to stop
+
+    Returns:
+        Load test response with final status
+
+    Raises:
+        HTTPException: If test_id not found
+    """
+    try:
+        return await concurrent_manager.stop_load_test(test_id)
+    except KeyError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+
+
+@router.post("/concurrent/stop-all")
+async def stop_all_concurrent_load_tests() -> dict[str, LoadTestResponse]:
+    """Stop all running concurrent load tests.
+
+    Returns:
+        Dictionary of test_id -> final response for all tests
+    """
+    return await concurrent_manager.stop_all_load_tests()
+
+
+@router.get("/concurrent/{test_id}/status")
+async def get_concurrent_load_test_status(test_id: str) -> LoadTestResponse:
+    """Get status of a specific concurrent load test.
+
+    Args:
+        test_id: Identifier of the load test
+
+    Returns:
+        Load test response with current status
+
+    Raises:
+        HTTPException: If test_id not found
+    """
+    try:
+        return await concurrent_manager.get_load_test_status(test_id)
+    except KeyError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+
+
+@router.get("/concurrent/status")
+async def get_all_concurrent_load_tests_status() -> dict[str, LoadTestResponse]:
+    """Get status of all concurrent load tests.
+
+    Returns:
+        Dictionary of test_id -> response for all tests
+    """
+    return await concurrent_manager.get_all_load_tests_status()
+
+
+@router.get("/concurrent/active")
+async def get_active_concurrent_test_ids() -> list[str]:
+    """Get list of currently active (running or starting) concurrent test IDs.
+
+    Returns:
+        List of active test IDs
+    """
+    return concurrent_manager.get_active_test_ids()
+
+
+@router.delete("/concurrent/cleanup")
+async def cleanup_stopped_concurrent_tests() -> dict[str, str]:
+    """Clean up stopped concurrent test instances to free memory.
+
+    Returns:
+        Status message
+    """
+    await concurrent_manager.cleanup_stopped_tests()
+    return {"status": "Cleanup completed"}

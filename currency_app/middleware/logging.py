@@ -5,6 +5,7 @@ import uuid
 from collections.abc import Callable
 
 from fastapi import Request, Response
+from opentelemetry import trace
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from currency_app.logging_config import get_logger
@@ -34,7 +35,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         client_ip = self._get_client_ip(request)
         user_agent = request.headers.get("user-agent", "")
 
-        # Bind request context to logger for all subsequent logs in this request
+        # Bind initial request context to logger
         request_logger = logger.bind(
             request_id=request_id,
             method=method,
@@ -60,11 +61,32 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             # Calculate response time
             response_time_ms = round((time.time() - start_time) * 1000, 2)
 
-            # Log response with additional context
+            # After authentication, capture user context if available
+            user_context_fields = {}
+            if hasattr(request.state, "user_context") and request.state.user_context:
+                user_context_fields.update(
+                    {
+                        "user_id": request.state.user_context.user_id,
+                        "account_id": request.state.user_context.account_id,
+                    }
+                )
+                # Bind user context to logger for complete request lifecycle logging
+                request_logger = request_logger.bind(**user_context_fields)
+
+                # Add user context to current OpenTelemetry span for tracing
+                current_span = trace.get_current_span()
+                if current_span.is_recording():
+                    current_span.set_attribute("user.id", request.state.user_context.user_id)
+                    current_span.set_attribute(
+                        "user.account_id", request.state.user_context.account_id
+                    )
+
+            # Log response with additional context including user info when available
             request_logger.info(
                 f"Request completed: {method} {url} - {response.status_code}",
                 status_code=response.status_code,
                 response_time_ms=response_time_ms,
+                **user_context_fields,
             )
 
             return response
@@ -73,11 +95,32 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             # Calculate response time for errors
             response_time_ms = round((time.time() - start_time) * 1000, 2)
 
-            # Log error with additional context and exception info
+            # Capture user context if available for error logging
+            user_context_fields = {}
+            if hasattr(request.state, "user_context") and request.state.user_context:
+                user_context_fields.update(
+                    {
+                        "user_id": request.state.user_context.user_id,
+                        "account_id": request.state.user_context.account_id,
+                    }
+                )
+                # Bind user context to logger for error reporting
+                request_logger = request_logger.bind(**user_context_fields)
+
+                # Add user context to current OpenTelemetry span for error tracing
+                current_span = trace.get_current_span()
+                if current_span.is_recording():
+                    current_span.set_attribute("user.id", request.state.user_context.user_id)
+                    current_span.set_attribute(
+                        "user.account_id", request.state.user_context.account_id
+                    )
+
+            # Log error with additional context including user info and exception info
             request_logger.error(
                 f"Request failed: {method} {url} - {e!s}",
                 response_time_ms=response_time_ms,
                 exc_info=True,
+                **user_context_fields,
             )
 
             # Re-raise the exception

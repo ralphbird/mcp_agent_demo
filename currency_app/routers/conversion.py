@@ -37,8 +37,8 @@ async def convert_currency(
     currency_service = CurrencyService()
 
     try:
-        # Perform conversion
-        response = currency_service.convert_currency(conversion_request)
+        # Perform conversion with user context for enhanced logging
+        response = currency_service.convert_currency(conversion_request, user_context)
 
         # Record successful conversion metrics
         record_currency_conversion(

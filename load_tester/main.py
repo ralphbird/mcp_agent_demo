@@ -61,6 +61,12 @@ async def root() -> dict[str, str | dict[str, str]]:
             "scenarios": "/api/load-test/scenarios",
             "scenario_start": "/api/load-test/scenarios/{scenario}/start",
             "scenario_report": "/api/load-test/scenarios/{scenario}/report",
+            "concurrent_start": "/api/load-test/concurrent/{test_id}/start",
+            "concurrent_stop": "/api/load-test/concurrent/{test_id}/stop",
+            "concurrent_status": "/api/load-test/concurrent/{test_id}/status",
+            "concurrent_stop_all": "/api/load-test/concurrent/stop-all",
+            "concurrent_status_all": "/api/load-test/concurrent/status",
+            "concurrent_active": "/api/load-test/concurrent/active",
             "metrics": "/metrics",
         },
     }

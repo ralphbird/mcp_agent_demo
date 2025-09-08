@@ -231,6 +231,120 @@
         }
       }
     },
+    "/api/debug/user-activity": {
+      "get": {
+        "tags": [
+          "debug"
+        ],
+        "summary": "Get User Activity",
+        "description": "Get recent user activity for DDoS investigation.\n\nThis endpoint helps identify users with unusually high activity levels\nby analyzing conversion requests over the specified time window.\n\nArgs:\n    minutes: Number of minutes to look back (1-60)\n    limit: Maximum number of users to return (5-100)\n    db: Database session\n\nReturns:\n    Dictionary with user activity statistics",
+        "operationId": "get_user_activity_api_debug_user_activity_get",
+        "parameters": [
+          {
+            "name": "minutes",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 60,
+              "minimum": 1,
+              "description": "Minutes to look back",
+              "default": 10,
+              "title": "Minutes"
+            },
+            "description": "Minutes to look back"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 5,
+              "description": "Max users to return",
+              "default": 20,
+              "title": "Limit"
+            },
+            "description": "Max users to return"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get User Activity Api Debug User Activity Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/debug/request-patterns": {
+      "get": {
+        "tags": [
+          "debug"
+        ],
+        "summary": "Get Request Patterns",
+        "description": "Analyze request patterns for anomaly detection.\n\nThis endpoint provides insights into request patterns that might indicate\ncoordinated attacks or unusual behavior.\n\nArgs:\n    minutes: Number of minutes to look back (1-60)\n    db: Database session\n\nReturns:\n    Dictionary with request pattern analysis",
+        "operationId": "get_request_patterns_api_debug_request_patterns_get",
+        "parameters": [
+          {
+            "name": "minutes",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 60,
+              "minimum": 1,
+              "description": "Minutes to look back",
+              "default": 10,
+              "title": "Minutes"
+            },
+            "description": "Minutes to look back"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Request Patterns Api Debug Request Patterns Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api": {
       "get": {
         "summary": "Api Info",

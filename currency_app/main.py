@@ -9,7 +9,7 @@ from currency_app.logging_config import get_logger
 from currency_app.middleware.auth import AuthenticationMiddleware
 from currency_app.middleware.logging import LoggingMiddleware
 from currency_app.middleware.metrics import PrometheusMiddleware, get_metrics
-from currency_app.routers import conversion, health, home, rates
+from currency_app.routers import conversion, debug, health, home, rates
 from currency_app.tracing_config import configure_tracing, instrument_application
 
 # Structlog is configured automatically when logging_config is imported
@@ -67,6 +67,7 @@ app.include_router(home.router)
 app.include_router(health.router)
 app.include_router(conversion.router)
 app.include_router(rates.router)
+app.include_router(debug.router)
 
 
 @app.get("/api")

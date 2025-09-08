@@ -52,7 +52,7 @@ class LoadTestConfig(BaseModel):
     requests_per_second: float = Field(
         default=1.0,
         gt=0,
-        le=100.0,
+        le=1000.0,
         description="Number of requests per second to generate",
     )
     currency_pairs: list[str] = Field(

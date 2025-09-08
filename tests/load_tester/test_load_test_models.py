@@ -193,8 +193,8 @@ class TestLoadTestConfig:
         config = LoadTestConfig(requests_per_second=1.0)
         assert config.requests_per_second == 1.0
 
-        config = LoadTestConfig(requests_per_second=100.0)
-        assert config.requests_per_second == 100.0
+        config = LoadTestConfig(requests_per_second=1000.0)
+        assert config.requests_per_second == 1000.0
 
         # Test boundary values
         config = LoadTestConfig(requests_per_second=0.1)
@@ -208,7 +208,7 @@ class TestLoadTestConfig:
             LoadTestConfig(requests_per_second=-1.0)  # Negative
 
         with pytest.raises(ValueError):
-            LoadTestConfig(requests_per_second=101.0)  # Greater than 100
+            LoadTestConfig(requests_per_second=1001.0)  # Greater than 1000
 
 
 class TestLoadTestHelperFunctions:

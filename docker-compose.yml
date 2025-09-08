@@ -39,6 +39,7 @@ services:
       - PYTHONPATH=/app
       - DATABASE_URL=postgresql://currency_user:currency_pass@postgres:5432/currency_db
       - JAEGER_ENDPOINT=http://jaeger:4317
+      - JWT_SECRET_KEY=dev-secret-key-change-in-production
       # PagerDuty Integration Keys (loaded from .env or defaults)
       - PAGERDUTY_CURRENCY_APP_KEY=${PAGERDUTY_CURRENCY_APP_KEY:-your-pagerduty-integration-key-here}
       - PAGERDUTY_LOAD_TESTER_KEY=${PAGERDUTY_LOAD_TESTER_KEY:-${PAGERDUTY_CURRENCY_APP_KEY:-your-pagerduty-integration-key-here}}
@@ -127,6 +128,7 @@ services:
       - LOAD_TESTER_API_HOST=0.0.0.0
       - LOAD_TESTER_API_PORT=8001
       - JAEGER_ENDPOINT=http://jaeger:4317
+      - JWT_SECRET_KEY=dev-secret-key-change-in-production
       # PagerDuty Integration Keys (loaded from .env or defaults)
       - PAGERDUTY_CURRENCY_APP_KEY=${PAGERDUTY_CURRENCY_APP_KEY:-your-pagerduty-integration-key-here}
       - PAGERDUTY_LOAD_TESTER_KEY=${PAGERDUTY_LOAD_TESTER_KEY:-${PAGERDUTY_CURRENCY_APP_KEY:-your-pagerduty-integration-key-here}}

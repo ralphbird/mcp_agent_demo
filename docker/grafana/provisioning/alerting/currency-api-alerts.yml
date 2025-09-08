@@ -134,12 +134,12 @@ groups:
           - refId: A
             queryType: ""
             relativeTimeRange:
-              from: 600
+              from: 300
               to: 0
             datasourceUid: prometheus
             model:
               editorMode: code
-              expr: sum(rate(http_requests_total{job="currency-api"}[5m]))
+              expr: sum(rate(http_requests_total{job="currency-api"}[2m]))
               instant: true
               intervalMs: 1000
               legendFormat: __auto
@@ -155,7 +155,7 @@ groups:
             model:
               conditions:
                 - evaluator:
-                    params: [30]
+                    params: [20]
                     type: gt
                   operator:
                     type: and
@@ -175,11 +175,11 @@ groups:
               type: threshold
         noDataState: NoData
         execErrState: Error
-        for: 5m
+        for: 2m
         keep_firing_for: 30s
         annotations:
-          description: "Currency API is receiving unusually high request volume (>30 RPS for 5 minutes)"
-          summary: "High request rate in Currency API"
+          description: "Currency API is receiving elevated request volume (>20 RPS for 2 minutes)"
+          summary: "Elevated request rate in Currency API"
           severity: "warning"
         labels:
           severity: warning
@@ -377,13 +377,12 @@ groups:
           - refId: A
             queryType: ""
             relativeTimeRange:
-              from: 600
+              from: 300
               to: 0
             datasourceUid: prometheus
             model:
               editorMode: code
-              expr: |
-                histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job="currency-api"}[5m])) by (le)) * 1000 > 2000
+              expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job="currency-api"}[2m])) by (le)) * 1000
               instant: true
               intervalMs: 1000
               legendFormat: __auto
@@ -399,7 +398,7 @@ groups:
             model:
               conditions:
                 - evaluator:
-                    params: [1]
+                    params: [1000]
                     type: gt
                   operator:
                     type: and
@@ -419,11 +418,71 @@ groups:
               type: threshold
         noDataState: NoData
         execErrState: Error
-        for: 2m
+        for: 1m
         keep_firing_for: 30s
         annotations:
-          description: "Currency API 95th percentile response time is above 2 seconds"
+          description: "Currency API 95th percentile response time is above 1 second (potential attack impact)"
           summary: "High response time in Currency API"
+          severity: "warning"
+        labels:
+          severity: warning
+        notification_settings:
+          receiver: pagerduty-warning
+
+      # Performance: Average Response Time Degradation
+      - uid: currency-api-avg-latency
+        title: Currency API Average Response Time High
+        condition: C
+        data:
+          - refId: A
+            queryType: ""
+            relativeTimeRange:
+              from: 180
+              to: 0
+            datasourceUid: prometheus
+            model:
+              editorMode: code
+              expr: sum(rate(http_request_duration_seconds_sum{job="currency-api"}[1m])) / sum(rate(http_request_duration_seconds_count{job="currency-api"}[1m])) * 1000
+              instant: true
+              intervalMs: 1000
+              legendFormat: __auto
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: C
+            queryType: ""
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: "__expr__"
+            model:
+              conditions:
+                - evaluator:
+                    params: [500]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: [C]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        noDataState: NoData
+        execErrState: Error
+        for: 1m
+        keep_firing_for: 30s
+        annotations:
+          description: "Currency API average response time is above 500ms (indicating system stress)"
+          summary: "Performance degradation in Currency API"
           severity: "warning"
         labels:
           severity: warning

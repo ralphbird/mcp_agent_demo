@@ -2,6 +2,7 @@
 
 import streamlit as st
 
+from dashboard.page_modules.attack_simulation import show_attack_simulation_page
 from dashboard.page_modules.converter import show_converter_page
 from dashboard.page_modules.historical import show_historical_trends_page
 from dashboard.page_modules.load_testing import show_load_testing_page
@@ -37,6 +38,7 @@ def main():
             "Historical Trends",
             "Load Testing",
             "Test Results",
+            "DDoS Attack Simulation",
         ],
     )
 
@@ -50,6 +52,8 @@ def main():
         show_load_testing_page()
     elif page == "Test Results":
         show_test_results_page()
+    elif page == "DDoS Attack Simulation":
+        show_attack_simulation_page()
 
 
 if __name__ == "__main__":

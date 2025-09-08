@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from decimal import ROUND_HALF_EVEN, Decimal
 from typing import ClassVar
 
+from currency_app.auth.jwt_auth import UserContext
 from currency_app.logging_config import get_logger
 from currency_app.models.conversion import (
     ConversionRequest,
@@ -135,11 +136,14 @@ class CurrencyService:
 
             return exchange_rate
 
-    def convert_currency(self, request: ConversionRequest) -> ConversionResponse:
+    def convert_currency(
+        self, request: ConversionRequest, user_context: UserContext | None = None
+    ) -> ConversionResponse:
         """Convert currency based on request.
 
         Args:
             request: Conversion request with amount and currencies
+            user_context: Optional user context for logging and tracing
 
         Returns:
             Conversion response with results
@@ -155,12 +159,26 @@ class CurrencyService:
             span.set_attribute("conversion.to_currency", request.to_currency)
 
             # Bind context for this conversion operation
-            conversion_logger = logger.bind(
-                request_id=request.request_id,
-                from_currency=request.from_currency,
-                to_currency=request.to_currency,
-                amount=str(request.amount),
-            )
+            logger_context = {
+                "request_id": request.request_id,
+                "from_currency": request.from_currency,
+                "to_currency": request.to_currency,
+                "amount": str(request.amount),
+            }
+
+            # Add user context if available
+            if user_context:
+                logger_context.update(
+                    {
+                        "user_id": user_context.user_id,
+                        "account_id": user_context.account_id,
+                    }
+                )
+                # Also add to span attributes for tracing
+                span.set_attribute("user.id", user_context.user_id)
+                span.set_attribute("user.account_id", user_context.account_id)
+
+            conversion_logger = logger.bind(**logger_context)
 
             conversion_logger.info(
                 f"Converting currency: {request.amount} {request.from_currency} -> {request.to_currency}"

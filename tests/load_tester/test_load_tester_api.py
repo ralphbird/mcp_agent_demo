@@ -185,7 +185,7 @@ class TestLoadTesterEndpoints:
         # Test requests per second too high
         config = {
             "config": {
-                "requests_per_second": 101.0,
+                "requests_per_second": 1001.0,
             }
         }
 
@@ -234,15 +234,15 @@ class TestLoadTesterEndpoints:
         assert response.status_code == 422
 
         error_detail = response.json()["detail"]
-        assert "must be between 0.1 and 100.0" in error_detail
+        assert "must be between 0.1 and 1000.0" in error_detail
 
     def test_start_simple_load_test_invalid_rps_high(self, client):
         """Test starting simple load test with RPS too high."""
-        response = client.post("/api/load-test/start/simple?requests_per_second=150.0")
+        response = client.post("/api/load-test/start/simple?requests_per_second=1001.0")
         assert response.status_code == 422
 
         error_detail = response.json()["detail"]
-        assert "must be between 0.1 and 100.0" in error_detail
+        assert "must be between 0.1 and 1000.0" in error_detail
 
     def test_start_simple_load_test_boundary_values(self, client):
         """Test starting simple load test with boundary RPS values."""

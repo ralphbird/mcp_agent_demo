@@ -93,7 +93,7 @@ def show_attack_simulation_page():
         st.info("No active load tests")
 
     # Performance metrics
-    st.subheader("📈 Performance Summary")
+    st.subheader("📈 Performance Summary (1-Minute Rolling Average)")
 
     if status_data and status_data.get("stats"):
         stats = status_data["stats"]
@@ -103,13 +103,13 @@ def show_attack_simulation_page():
             st.metric("Total Requests", stats.get("total_requests", 0))
 
         with col2:
-            st.metric("Success Rate", f"{stats.get('success_rate', 0):.1%}")
+            st.metric("Success Rate (1m avg)", f"{stats.get('success_rate', 0):.1%}")
 
         with col3:
-            st.metric("Avg Response (ms)", f"{stats.get('avg_response_time_ms', 0):.1f}")
+            st.metric("Avg Response (1m avg)", f"{stats.get('avg_response_time_ms', 0):.1f}ms")
 
         with col4:
-            st.metric("Current RPS", f"{stats.get('requests_per_second', 0):.1f}")
+            st.metric("Current RPS (1m avg)", f"{stats.get('requests_per_second', 0):.1f}")
 
 
 def start_load_test(test_type: str, rps: float, duration: int) -> None:

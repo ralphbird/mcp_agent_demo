@@ -165,7 +165,7 @@ def show_attack_simulation_page():
         st.info("No active load tests")
 
     # Performance metrics - combine stats from both tests
-    st.subheader("📈 Performance Summary (1-Minute Rolling Average)")
+    st.subheader("📈 Performance Summary (10-Second Rolling Average)")
 
     # Calculate combined metrics
     combined_stats = {}
@@ -260,7 +260,7 @@ def show_attack_simulation_page():
 
         with col4:
             rolling_rps = combined_stats.get("rolling_requests_per_second", 0)
-            st.metric("Rolling RPS (1m)", f"{rolling_rps:.1f}")
+            st.metric("Rolling RPS (10s)", f"{rolling_rps:.1f}")
 
             # Show accuracy alert if using rolling RPS
             if target_rps > 0:

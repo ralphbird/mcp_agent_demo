@@ -61,7 +61,7 @@ def show_load_testing_page():
 
         # Live statistics
         if status.get("stats"):
-            st.subheader("📈 Live Statistics (1-Minute Rolling Average)")
+            st.subheader("📈 Live Statistics (10-Second Rolling Average)")
             col1, col2, col3, col4 = st.columns(4)
 
             with col1:

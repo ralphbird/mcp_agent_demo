@@ -50,31 +50,31 @@ def show_load_testing_page():
     # Real-time test information
     if status["status"] in ["running", "starting", "stopping"]:
         if status.get("config"):
-            col1, col2, col3 = st.columns(3)
+            col1, col2 = st.columns(2)
             with col1:
                 st.metric("Target RPS", status["config"]["requests_per_second"])
             with col2:
-                st.metric("Currency Pairs", len(status["config"]["currency_pairs"]))
-            with col3:
-                st.metric("Test Amounts", len(status["config"]["amounts"]))
+                error_injection = status["config"].get("error_injection_enabled", False)
+                error_rate = status["config"].get("error_injection_rate", 0) * 100
+                injection_status = f"✅ {error_rate:.1f}%" if error_injection else "❌ Disabled"
+                st.metric("Error Injection", injection_status)
 
         # Live statistics
         if status.get("stats"):
-            st.subheader("📈 Live Statistics")
+            st.subheader("📈 Live Statistics (1-Minute Rolling Average)")
             col1, col2, col3, col4 = st.columns(4)
 
             with col1:
                 st.metric("Total Requests", status["stats"]["total_requests"])
             with col2:
-                success_rate = (
-                    status["stats"]["successful_requests"]
-                    / max(status["stats"]["total_requests"], 1)
-                ) * 100
-                st.metric("Success Rate", f"{success_rate:.1f}%")
+                rolling_success_rate = status["stats"].get("rolling_success_rate", 0.0)
+                st.metric("Success Rate (1m)", f"{rolling_success_rate:.1f}%")
             with col3:
-                st.metric("Avg Response Time", f"{status['stats']['avg_response_time_ms']:.1f}ms")
+                rolling_avg_response = status["stats"].get("rolling_avg_response_ms", 0.0)
+                st.metric("Avg Response (1m)", f"{rolling_avg_response:.1f}ms")
             with col4:
-                st.metric("Current RPS", f"{status['stats']['requests_per_second']:.2f}")
+                rolling_rps = status["stats"].get("rolling_requests_per_second", 0.0)
+                st.metric("Current RPS (1m)", f"{rolling_rps:.2f}")
 
     # Main Control Panel
     st.subheader("🎮 Load Test Controls")
@@ -167,23 +167,11 @@ def show_load_testing_page():
                     key="ramp_rps_slider",
                 )
 
-                ramp_currency_pairs = st.multiselect(
-                    "Currency Pairs",
-                    _get_all_currency_pairs(),
-                    default=current_config.get("currency_pairs", _get_all_currency_pairs()[:5]),
-                    help="Update currency pairs to test (showing all available pairs)",
-                    key="ramp_currency_pairs",
-                )
+                # Use all currency pairs and amounts automatically
+                ramp_currency_pairs = _get_all_currency_pairs()
+                ramp_amounts = _get_all_amounts()
 
             with col2:
-                ramp_amounts = st.multiselect(
-                    "Test Amounts",
-                    _get_all_amounts(),
-                    default=current_config.get("amounts", _get_all_amounts()[:5]),
-                    help="Update transaction amounts to test (showing all available amounts)",
-                    key="ramp_amounts",
-                )
-
                 # Show ramping direction
                 ramp_direction = (
                     "⬆️ Ramp Up"
@@ -226,10 +214,7 @@ def show_load_testing_page():
 
         with tab1:
             st.markdown("**Choose from predefined load test scenarios:**")
-            st.info(
-                "💡 All scenario tests automatically use ALL currency pairs with amounts "
-                "appropriate for each from-currency (e.g., JPY: 10K-1M, USD: 100-10K)"
-            )
+            st.info("💡 All scenario tests use optimized configuration with comprehensive coverage")
 
             scenarios = get_load_test_scenarios()
             if scenarios:
@@ -260,11 +245,10 @@ def show_load_testing_page():
                                 "Recommended Duration", f"{scenario_details['duration_seconds']}s"
                             )
                         with col3:
-                            st.metric("Currency Pairs", "All Available")
+                            st.metric("Configuration", "Auto-Optimized")
 
                         st.success(
-                            "🎯 **Auto-Configuration**: This scenario automatically uses ALL currency pairs "
-                            "with amounts appropriate for each from-currency (e.g., JPY uses 10,000-1,000,000, USD uses 100-10,000)"
+                            "🎯 **Auto-Configuration**: Optimized settings with comprehensive test coverage"
                         )
 
                         st.markdown(
@@ -281,8 +265,7 @@ def show_load_testing_page():
         with tab2:
             st.markdown("**Quick load test with automatic configuration:**")
             st.success(
-                "🎯 **Auto-Configuration**: Uses ALL currency pairs with amounts "
-                "appropriate for each from-currency (e.g., JPY: 10K-1M, USD: 100-10K)"
+                "🎯 **Auto-Configuration**: Optimized settings with comprehensive test coverage"
             )
 
             simple_rps = st.slider(
@@ -326,18 +309,14 @@ def show_load_testing_page():
                     "negative amounts, zero amounts, wrong currency formats, etc. This simulates real-world traffic patterns."
                 )
 
-            col1, col2, col3 = st.columns(3)
+            col1, col2 = st.columns(2)
             with col1:
-                st.metric("Currency Pairs", "All Available (42 pairs)")
-            with col2:
-                st.metric("Test Amounts", "Currency-Specific")
-            with col3:
                 st.metric("Target RPS", f"{simple_rps}")
-
-            st.markdown(
-                "**Auto-includes**: USD↔EUR, USD↔GBP, EUR↔GBP, USD↔JPY, USD↔CAD, USD↔AUD, "
-                "USD↔CHF, and all reverse pairs with realistic amounts for each currency."
-            )
+            with col2:
+                error_display = (
+                    f"{error_injection_rate:.1%}" if error_injection_enabled else "Disabled"
+                )
+                st.metric("Error Injection", error_display)
 
             if st.button("🚀 Start Simple Load Test", type="primary"):
                 result = start_simple_load_test(
@@ -369,19 +348,13 @@ def show_load_testing_page():
                     help="Number of requests to send per second",
                 )
 
-                currency_pairs = st.multiselect(
-                    "Currency Pairs",
-                    _get_all_currency_pairs(),
-                    default=_get_all_currency_pairs()[:5],
-                    help="Currency pairs to test (showing all available pairs)",
-                )
+                # Use all currency pairs and amounts automatically
+                currency_pairs = _get_all_currency_pairs()
+                amounts = _get_all_amounts()
 
             with col2:
-                amounts = st.multiselect(
-                    "Test Amounts",
-                    _get_all_amounts(),
-                    default=_get_all_amounts()[:5],
-                    help="Transaction amounts to test (showing all available amounts)",
+                st.info(
+                    "💡 **Simplified**: Auto-configured with all currency pairs and optimized amounts"
                 )
 
             if currency_pairs and amounts and st.button("🚀 Start Custom Test", type="primary"):

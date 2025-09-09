@@ -3,6 +3,8 @@
 import asyncio
 import random
 import time
+from collections import deque
+from typing import NamedTuple
 
 import aiohttp
 from pydantic import ValidationError
@@ -12,6 +14,14 @@ from load_tester.auth.test_users import get_random_test_user
 from load_tester.config import settings
 from load_tester.models.load_test import LoadTestConfig, LoadTestStats
 from load_tester.services.currency_patterns import CurrencyPatterns
+
+
+class RequestRecord(NamedTuple):
+    """Record of a single request for rolling statistics."""
+
+    timestamp: float
+    success: bool
+    response_time_ms: float
 
 
 class LoadGenerationResult:
@@ -58,6 +68,10 @@ class LoadGenerator:
 
         # JWT authentication management
         self._jwt_token_manager = get_jwt_token_manager()
+
+        # Rolling average tracking (last 60 seconds of requests)
+        self._request_history: deque[RequestRecord] = deque()
+        self._rolling_window_seconds = 60.0
 
     async def start(self) -> None:
         """Start the load generation process."""
@@ -120,6 +134,9 @@ class LoadGenerator:
                 if elapsed_seconds > 0:
                     self.stats.requests_per_second = self.stats.total_requests / elapsed_seconds
 
+            # Update rolling averages
+            self._calculate_rolling_averages()
+
             return LoadTestStats(
                 total_requests=self.stats.total_requests,
                 successful_requests=self.stats.successful_requests,
@@ -128,6 +145,9 @@ class LoadGenerator:
                 min_response_time_ms=self.stats.min_response_time_ms,
                 max_response_time_ms=self.stats.max_response_time_ms,
                 requests_per_second=self.stats.requests_per_second,
+                rolling_success_rate=self.stats.rolling_success_rate,
+                rolling_avg_response_ms=self.stats.rolling_avg_response_ms,
+                rolling_requests_per_second=self.stats.rolling_requests_per_second,
             )
 
     async def ramp_to_config(self, new_config: LoadTestConfig) -> None:
@@ -316,6 +336,9 @@ class LoadGenerator:
             result: Result of a single request
         """
         async with self._stats_lock:
+            current_time = time.time()
+
+            # Update cumulative stats
             self.stats.total_requests += 1
 
             if result.success:
@@ -339,3 +362,58 @@ class LoadGenerator:
                 self.stats.avg_response_time_ms = (
                     total_time + result.response_time_ms
                 ) / self.stats.total_requests
+
+            # Add to rolling window
+            self._request_history.append(
+                RequestRecord(
+                    timestamp=current_time,
+                    success=result.success,
+                    response_time_ms=result.response_time_ms,
+                )
+            )
+
+            # Clean old records outside the rolling window
+            cutoff_time = current_time - self._rolling_window_seconds
+            while self._request_history and self._request_history[0].timestamp < cutoff_time:
+                self._request_history.popleft()
+
+    def _calculate_rolling_averages(self) -> None:
+        """Calculate 1-minute rolling averages from recent request history."""
+        if not self._request_history:
+            self.stats.rolling_success_rate = 0.0
+            self.stats.rolling_avg_response_ms = 0.0
+            self.stats.rolling_requests_per_second = 0.0
+            return
+
+        current_time = time.time()
+        cutoff_time = current_time - self._rolling_window_seconds
+
+        # Filter to requests in the last minute
+        recent_requests = [req for req in self._request_history if req.timestamp >= cutoff_time]
+
+        if not recent_requests:
+            self.stats.rolling_success_rate = 0.0
+            self.stats.rolling_avg_response_ms = 0.0
+            self.stats.rolling_requests_per_second = 0.0
+            return
+
+        # Calculate rolling metrics
+        total_recent = len(recent_requests)
+        successful_recent = sum(1 for req in recent_requests if req.success)
+
+        self.stats.rolling_success_rate = (successful_recent / total_recent) * 100.0
+
+        # Average response time for successful requests only
+        successful_times = [
+            req.response_time_ms
+            for req in recent_requests
+            if req.success and req.response_time_ms > 0
+        ]
+        self.stats.rolling_avg_response_ms = (
+            sum(successful_times) / len(successful_times) if successful_times else 0.0
+        )
+
+        # Requests per second over the rolling window
+        if recent_requests:
+            time_span = max(1.0, current_time - recent_requests[0].timestamp)
+            self.stats.rolling_requests_per_second = total_recent / time_span

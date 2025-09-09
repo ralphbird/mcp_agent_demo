@@ -147,6 +147,11 @@ class LoadTestStats(BaseModel):
     max_response_time_ms: float = 0.0
     requests_per_second: float = 0.0
 
+    # 1-minute rolling averages (calculated from recent data)
+    rolling_success_rate: float = 0.0
+    rolling_avg_response_ms: float = 0.0
+    rolling_requests_per_second: float = 0.0
+
 
 class LoadTestResponse(BaseModel):
     """Load test status and statistics response."""

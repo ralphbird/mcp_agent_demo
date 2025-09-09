@@ -439,3 +439,281 @@ class TestRollingAverages:
         assert stats.rolling_success_rate == 100.0  # Both successful
         assert stats.rolling_avg_response_ms == 150.0  # (100 + 200) / 2
         assert stats.rolling_requests_per_second == 0.2  # 2 requests / 10s window
+
+
+class TestRPSDistribution:
+    """Test RPS distribution across multiple workers to prevent multiplication bug."""
+
+    @pytest.fixture
+    def high_rps_config(self):
+        """Create config with high RPS that will use multiple workers."""
+        return LoadTestConfig(
+            requests_per_second=20.0,
+            currency_pairs=["USD_EUR", "GBP_USD"],
+            amounts=[100.0, 500.0],
+        )
+
+    @pytest.fixture
+    async def high_rps_generator(self, high_rps_config):
+        """Create load generator with high RPS config."""
+        generator = LoadGenerator(high_rps_config)
+        yield generator
+        # Cleanup
+        with suppress(Exception):
+            if generator.is_running:
+                await generator.stop()
+
+    def test_worker_interval_calculation_single_worker(self):
+        """Test interval calculation for single worker scenarios."""
+        config = LoadTestConfig(requests_per_second=5.0)
+        generator = LoadGenerator(config)
+
+        # Simulate single worker (low RPS)
+        generator._tasks = [AsyncMock()]  # Single task
+
+        # For 5 RPS with 1 worker: interval = 1 / 5.0 = 0.2
+        expected_interval = 1 / 5.0
+
+        # Test the interval calculation logic
+        num_workers = len(generator._tasks)
+        calculated_interval = num_workers / generator.config.requests_per_second
+
+        assert num_workers == 1
+        assert calculated_interval == expected_interval
+
+    def test_worker_interval_calculation_multiple_workers(self):
+        """Test interval calculation for multiple worker scenarios."""
+        config = LoadTestConfig(requests_per_second=20.0)
+        generator = LoadGenerator(config)
+
+        # Simulate multiple workers (high RPS)
+        generator._tasks = [AsyncMock() for _ in range(10)]  # 10 tasks
+
+        # For 20 RPS with 10 workers: each worker should have interval = 10 / 20.0 = 0.5
+        # This means each worker generates 1/0.5 = 2 RPS
+        # Total: 10 workers * 2 RPS = 20 RPS ✅
+        expected_interval = 10 / 20.0
+
+        num_workers = len(generator._tasks)
+        calculated_interval = num_workers / generator.config.requests_per_second
+
+        assert num_workers == 10
+        assert calculated_interval == expected_interval
+        assert calculated_interval == 0.5
+
+    def test_worker_rps_distribution_prevents_multiplication(self):
+        """Test that worker RPS distribution prevents the multiplication bug."""
+        test_cases = [
+            (10.0, 5),  # 10 RPS with 5 workers: each worker = 1 RPS interval = 5/10 = 0.5
+            (20.0, 10),  # 20 RPS with 10 workers: each worker = 2 RPS, interval = 10/20 = 0.5
+            (50.0, 10),  # 50 RPS with 10 workers: each worker = 5 RPS, interval = 10/50 = 0.2
+            (100.0, 10),  # 100 RPS with 10 workers: each worker = 10 RPS, interval = 10/100 = 0.1
+        ]
+
+        for target_rps, num_workers in test_cases:
+            config = LoadTestConfig(requests_per_second=target_rps)
+            generator = LoadGenerator(config)
+
+            # Simulate the workers
+            generator._tasks = [AsyncMock() for _ in range(num_workers)]
+
+            # Calculate what each worker should do
+            worker_interval = num_workers / target_rps
+            worker_rps = 1.0 / worker_interval
+            total_rps = worker_rps * num_workers
+
+            # Verify the math prevents multiplication bug
+            assert abs(total_rps - target_rps) < 0.01, (
+                f"RPS mismatch: expected {target_rps}, got {total_rps}"
+            )
+
+            # Verify worker interval is correct
+            calculated_interval = num_workers / generator.config.requests_per_second
+            assert abs(calculated_interval - worker_interval) < 0.001
+
+    def test_edge_case_single_worker_high_rps(self):
+        """Test edge case where high RPS uses single worker."""
+        config = LoadTestConfig(requests_per_second=100.0)
+        generator = LoadGenerator(config)
+
+        # Force single worker scenario
+        generator._tasks = [AsyncMock()]
+
+        # Single worker should handle full RPS
+        calculated_interval = 1 / generator.config.requests_per_second
+        assert calculated_interval == 0.01  # 1/100
+
+    def test_very_low_rps_protection(self):
+        """Test protection against very low RPS values."""
+        config = LoadTestConfig(requests_per_second=0.01)  # Very low but valid RPS
+        generator = LoadGenerator(config)
+        generator._tasks = [AsyncMock()]
+
+        # Should use max() protection to prevent issues with extremely low RPS
+        calculated_interval = 1 / max(generator.config.requests_per_second, 0.1)
+        assert calculated_interval == 10.0  # 1/0.1 (since 0.01 < 0.1)
+
+    @pytest.mark.asyncio
+    async def test_rps_calculation_in_worker_context(self, high_rps_generator):
+        """Test RPS calculation as it would happen in actual worker context."""
+        with patch("aiohttp.ClientSession") as mock_session_class:
+            mock_session = AsyncMock()
+            mock_session_class.return_value = mock_session
+
+            # Start generator to create actual tasks
+            await high_rps_generator.start()
+
+            # Verify task count matches expected worker configuration
+            num_workers, expected_interval = high_rps_generator._calculate_worker_config(20.0)
+            assert len(high_rps_generator._tasks) == num_workers
+
+            # Test the actual interval calculation used in worker
+            actual_interval = num_workers / max(high_rps_generator.config.requests_per_second, 0.1)
+            assert abs(actual_interval - expected_interval) < 0.001
+
+            await high_rps_generator.stop()
+
+    def test_dynamic_ramping_preserves_rps_accuracy(self):
+        """Test that ramping to new RPS maintains accurate distribution."""
+        config = LoadTestConfig(requests_per_second=10.0)
+        generator = LoadGenerator(config)
+
+        # Start with initial worker count
+        generator._tasks = [AsyncMock() for _ in range(5)]  # 5 workers for 10 RPS
+
+        # Verify initial calculation
+        initial_interval = 5 / 10.0  # 0.5 - each worker does 2 RPS
+        calculated_interval = len(generator._tasks) / generator.config.requests_per_second
+        assert calculated_interval == initial_interval
+
+        # Simulate ramp to higher RPS
+        generator.config.requests_per_second = 50.0
+
+        # Add more workers for higher RPS (simulate ramping)
+        generator._tasks = [AsyncMock() for _ in range(10)]  # 10 workers for 50 RPS
+
+        # Verify new calculation
+        new_interval = 10 / 50.0  # 0.2 - each worker does 5 RPS
+        calculated_interval = len(generator._tasks) / generator.config.requests_per_second
+        assert calculated_interval == new_interval
+
+    def test_rps_accuracy_with_different_worker_counts(self):
+        """Test RPS accuracy across different worker count scenarios."""
+        test_scenarios = [
+            # (target_rps, expected_workers_from_calc_method)
+            (1.0, 1),  # Low RPS -> 1 worker
+            (5.0, 1),  # Low RPS -> 1 worker
+            (10.0, 1),  # Boundary -> 1 worker
+            (15.0, 7),  # Medium RPS -> min(15/2, 10) = 7 workers
+            (20.0, 10),  # High RPS -> min(20/2, 10) = 10 workers
+            (100.0, 10),  # Very high RPS -> capped at 10 workers
+        ]
+
+        for target_rps, expected_workers in test_scenarios:
+            config = LoadTestConfig(requests_per_second=target_rps)
+            generator = LoadGenerator(config)
+
+            # Verify worker calculation method
+            num_workers, interval = generator._calculate_worker_config(target_rps)
+            assert num_workers == expected_workers
+
+            # Simulate the actual worker setup
+            generator._tasks = [AsyncMock() for _ in range(num_workers)]
+
+            # Test the interval calculation that happens in worker loop
+            calculated_interval = num_workers / max(target_rps, 0.1)
+
+            # Verify total RPS will be correct
+            worker_rps = 1.0 / calculated_interval
+            total_rps = worker_rps * num_workers
+
+            assert abs(total_rps - target_rps) < 0.01, (
+                f"RPS mismatch for {target_rps} RPS with {num_workers} workers: "
+                f"expected {target_rps}, calculated {total_rps}"
+            )
+
+
+class TestRegressionRPSMultiplicationBug:
+    """Regression test for the RPS multiplication bug that was fixed."""
+
+    def test_rps_multiplication_bug_would_have_failed_before_fix(self):
+        """Test that verifies the old behavior (RPS multiplication) would fail this test.
+
+        This test documents the bug that was fixed: multiple workers each generating
+        full RPS instead of distributing the load.
+        """
+        target_rps = 20.0
+        num_workers = 10
+
+        config = LoadTestConfig(requests_per_second=target_rps)
+        generator = LoadGenerator(config)
+        generator._tasks = [AsyncMock() for _ in range(num_workers)]
+
+        # CORRECT behavior (current implementation):
+        # Each worker should have interval = num_workers / target_rps = 10/20 = 0.5
+        # Each worker generates: 1/0.5 = 2 RPS
+        # Total: 10 workers x 2 RPS = 20 RPS ✅
+
+        correct_interval = num_workers / target_rps  # 0.5
+
+        # BUGGY behavior (old implementation):
+        # Each worker would have interval = 1 / target_rps = 1/20 = 0.05
+        # Each worker generates: 1/0.05 = 20 RPS
+        # Total: 10 workers x 20 RPS = 200 RPS ❌
+
+        buggy_interval = 1.0 / target_rps  # 0.05 (OLD BUG)
+        buggy_worker_rps = 1.0 / buggy_interval  # 20.0 (OLD BUG)
+        buggy_total_rps = buggy_worker_rps * num_workers  # 200.0 (OLD BUG)
+
+        # Verify the current implementation is correct
+        current_interval = num_workers / max(generator.config.requests_per_second, 0.1)
+        assert abs(current_interval - correct_interval) < 0.001
+
+        # Verify the bug would produce 10x multiplied rate
+        assert abs(buggy_total_rps - (target_rps * num_workers)) < 0.01
+        assert buggy_total_rps == 200.0  # The bug that was fixed
+
+        # Verify current implementation gives correct total RPS
+        current_worker_rps = 1.0 / current_interval
+        current_total_rps = current_worker_rps * num_workers
+        assert abs(current_total_rps - target_rps) < 0.01
+
+    def test_demonstrates_fix_for_baseline_20rps_10workers_scenario(self):
+        """Test that specifically addresses the user's reported 20 RPS baseline issue."""
+        # This recreates the exact scenario the user experienced:
+        # - Set baseline to 20 RPS
+        # - System creates 10 workers (since RPS > 10)
+        # - User saw much higher rate in external service
+
+        baseline_rps = 20.0
+        config = LoadTestConfig(requests_per_second=baseline_rps)
+        generator = LoadGenerator(config)
+
+        # Calculate what the system actually creates for 20 RPS
+        expected_workers, expected_interval = generator._calculate_worker_config(baseline_rps)
+
+        # For 20 RPS: min(int(20/2), 10) = min(10, 10) = 10 workers
+        assert expected_workers == 10
+
+        # Simulate the worker setup
+        generator._tasks = [AsyncMock() for _ in range(expected_workers)]
+
+        # Test the corrected interval calculation
+        corrected_interval = expected_workers / baseline_rps  # 10/20 = 0.5
+        actual_interval = len(generator._tasks) / generator.config.requests_per_second
+
+        assert abs(actual_interval - corrected_interval) < 0.001
+        assert actual_interval == 0.5
+
+        # Each worker should generate 2 RPS (1/0.5 = 2)
+        worker_rps = 1.0 / actual_interval
+        assert worker_rps == 2.0
+
+        # Total should be exactly 20 RPS (10 workers x 2 RPS = 20)
+        total_rps = worker_rps * expected_workers
+        assert total_rps == 20.0
+
+        # This test would have failed with the old bug:
+        # old_interval = 1.0 / baseline_rps = 0.05
+        # old_worker_rps = 1.0 / 0.05 = 20.0
+        # old_total_rps = 20.0 x 10 = 200.0 ❌

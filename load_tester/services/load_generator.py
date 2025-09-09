@@ -231,8 +231,9 @@ class LoadGenerator:
 
                 # Metrics recording removed for load_tester
 
-                # Calculate current interval from config (allows for dynamic ramping)
-                current_interval = 1.0 / max(self.config.requests_per_second, 0.1)
+                # Calculate current interval distributed across all workers
+                num_workers = len(self._tasks) if self._tasks else 1
+                current_interval = num_workers / max(self.config.requests_per_second, 0.1)
 
                 # Wait for next request interval
                 await asyncio.sleep(current_interval)
@@ -249,7 +250,8 @@ class LoadGenerator:
                 await self._update_stats(error_result)
 
                 # Use current interval for error sleep as well
-                current_interval = 1.0 / max(self.config.requests_per_second, 0.1)
+                num_workers = len(self._tasks) if self._tasks else 1
+                current_interval = num_workers / max(self.config.requests_per_second, 0.1)
                 await asyncio.sleep(current_interval)
 
     async def _execute_single_request(self) -> tuple[LoadGenerationResult, dict[str, str | float]]:

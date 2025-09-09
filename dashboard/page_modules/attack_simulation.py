@@ -76,7 +76,7 @@ def show_attack_simulation_page():
             duration = st.number_input(
                 "Duration (seconds)",
                 min_value=10,
-                max_value=600,
+                max_value=1200,
                 value=60,
                 help="How long to run the test",
             )
@@ -102,8 +102,8 @@ def show_attack_simulation_page():
         burst_duration = st.number_input(
             "Burst Duration (seconds)",
             min_value=5,
-            max_value=120,
-            value=30,
+            max_value=1200,
+            value=240,
             help="Duration of each burst",
         )
 
@@ -200,6 +200,7 @@ def show_attack_simulation_page():
             combined_stats = main_stats
 
     if combined_stats:
+        # First row of metrics
         col1, col2, col3, col4 = st.columns(4)
 
         with col1:
@@ -218,6 +219,111 @@ def show_attack_simulation_page():
 
         with col4:
             st.metric("Combined RPS", f"{combined_stats.get('requests_per_second', 0):.1f}")
+
+        # Second row - RPS accuracy and latency compensation metrics
+        st.subheader("📈 RPS Accuracy & Latency Compensation")
+        col1, col2, col3, col4 = st.columns(4)
+
+        # Get accuracy metrics from main status (baseline may not have these metrics)
+        accuracy_stats = main_status.get("stats", {}) if main_status else {}
+
+        with col1:
+            target_rps = accuracy_stats.get("target_requests_per_second", 0)
+            achieved_accuracy = accuracy_stats.get("achieved_rps_accuracy", 0)
+
+            st.metric(
+                "RPS Accuracy",
+                f"{achieved_accuracy:.1f}%",
+                delta=f"Target: {target_rps:.1f} RPS",
+            )
+
+            if achieved_accuracy < 85:
+                st.error("⚠️ RPS accuracy below 85% threshold")
+
+        with col2:
+            compensation_active = accuracy_stats.get("latency_compensation_active", False)
+            avg_compensation = accuracy_stats.get("avg_compensation_ms", 0)
+
+            status_text = "✅ Active" if compensation_active else "❌ Disabled"
+            st.metric("Latency Compensation", status_text)
+            if compensation_active and avg_compensation > 0:
+                st.caption(f"Avg compensation: {avg_compensation:.1f}ms")
+
+        with col3:
+            adaptive_scaling = accuracy_stats.get("adaptive_scaling_active", False)
+            current_workers = accuracy_stats.get("current_worker_count", 0)
+            base_workers = accuracy_stats.get("base_worker_count", 0)
+
+            scaling_text = "🔄 Scaled" if adaptive_scaling else "📊 Base"
+            st.metric("Worker Scaling", scaling_text)
+            st.caption(f"Workers: {current_workers} (base: {base_workers})")
+
+        with col4:
+            rolling_rps = combined_stats.get("rolling_requests_per_second", 0)
+            st.metric("Rolling RPS (1m)", f"{rolling_rps:.1f}")
+
+            # Show accuracy alert if using rolling RPS
+            if target_rps > 0:
+                rolling_accuracy = (rolling_rps / target_rps) * 100
+                if rolling_accuracy < 85:
+                    st.warning(f"📉 Rolling accuracy: {rolling_accuracy:.1f}%")
+
+        # Latency compensation insights and recommendations
+        if accuracy_stats and target_rps > 0:
+            st.subheader("💡 Performance Insights")
+
+            insights_col1, insights_col2 = st.columns(2)
+
+            with insights_col1:
+                st.write("**Latency Compensation Impact:**")
+
+                if compensation_active:
+                    if avg_compensation > 100:
+                        st.info(
+                            f"🔧 High compensation ({avg_compensation:.1f}ms) - requests are slower than target intervals"
+                        )
+                    elif avg_compensation > 50:
+                        st.success(
+                            f"⚡ Moderate compensation ({avg_compensation:.1f}ms) - system is adapting well"
+                        )
+                    elif avg_compensation > 0:
+                        st.success(
+                            f"✨ Low compensation ({avg_compensation:.1f}ms) - excellent response times"
+                        )
+                    else:
+                        st.info("📊 No compensation needed - response times are very fast")
+                else:
+                    st.warning(
+                        "🚫 Latency compensation disabled - RPS may be inaccurate under load"
+                    )
+
+            with insights_col2:
+                st.write("**Adaptive Scaling Status:**")
+
+                if adaptive_scaling:
+                    extra_workers = current_workers - base_workers
+                    st.info(
+                        f"🔄 System scaled up with {extra_workers} additional workers due to high latency"
+                    )
+                    st.caption("This helps maintain target RPS despite slower response times")
+                else:
+                    if current_workers == base_workers:
+                        st.success("📊 Running at optimal worker count for current RPS")
+                    else:
+                        st.info(f"📈 Using {current_workers} workers (base: {base_workers})")
+
+            # Performance recommendations
+            if achieved_accuracy < 85:
+                st.error("**🎯 Performance Recommendations:**")
+                if not compensation_active:
+                    st.write("• Enable latency compensation for more accurate RPS")
+                if avg_compensation > 200:
+                    st.write("• Consider reducing target RPS or optimizing the target API")
+                if not adaptive_scaling and current_workers == base_workers:
+                    st.write("• Enable adaptive scaling to handle high latency periods")
+
+            elif achieved_accuracy >= 95:
+                st.success("**✅ Excellent Performance:** Target RPS is being achieved accurately!")
 
     # Auto-refresh for countdown timer
     if "auto_stop_timer" in st.session_state and st.session_state.auto_stop_timer:

@@ -69,9 +69,16 @@ class LoadGenerator:
         # JWT authentication management
         self._jwt_token_manager = get_jwt_token_manager()
 
-        # Rolling average tracking (last 60 seconds of requests)
+        # Rolling average tracking (last 10 seconds of requests)
         self._request_history: deque[RequestRecord] = deque()
-        self._rolling_window_seconds = 60.0
+        self._rolling_window_seconds = 10.0
+
+        # Adaptive scaling state
+        self._last_scaling_time = 0.0
+        self._adaptive_scaling_active = False
+
+        # Latency compensation tracking
+        self._compensation_history: deque[float] = deque(maxlen=1000)  # Last 1000 compensations
 
     def _calculate_worker_config(self, rps: float) -> tuple[int, float]:
         """Calculate optimal number of workers and interval for given RPS.
@@ -107,6 +114,11 @@ class LoadGenerator:
         for _ in range(num_workers):
             task = asyncio.create_task(self._generate_load_worker(interval))
             self._tasks.append(task)
+
+        # Start adaptive scaling task if enabled
+        if settings.adaptive_scaling_enabled:
+            scaling_task = asyncio.create_task(self._adaptive_scaling_monitor())
+            self._tasks.append(scaling_task)
 
     async def stop(self) -> LoadTestStats:
         """Stop the load generation process.
@@ -154,6 +166,28 @@ class LoadGenerator:
             # Update rolling averages
             self._calculate_rolling_averages()
 
+            # Calculate RPS accuracy
+            target_rps = self.config.requests_per_second
+            achieved_rps = (
+                self.stats.rolling_requests_per_second
+            )  # Use rolling average for accuracy
+            rps_accuracy = (achieved_rps / target_rps * 100.0) if target_rps > 0 else 0.0
+
+            # Calculate average compensation
+            avg_compensation = 0.0
+            if self._compensation_history:
+                avg_compensation = sum(self._compensation_history) / len(self._compensation_history)
+
+            # Get worker counts (exclude adaptive scaling monitor)
+            current_workers = 0
+            for task in self._tasks:
+                coro = task.get_coro()
+                coro_name = coro.__name__ if coro and hasattr(coro, "__name__") else str(task)
+                if "_adaptive_scaling_monitor" not in coro_name:
+                    current_workers += 1
+
+            base_workers, _ = self._calculate_worker_config(target_rps)
+
             return LoadTestStats(
                 total_requests=self.stats.total_requests,
                 successful_requests=self.stats.successful_requests,
@@ -165,6 +199,14 @@ class LoadGenerator:
                 rolling_success_rate=self.stats.rolling_success_rate,
                 rolling_avg_response_ms=self.stats.rolling_avg_response_ms,
                 rolling_requests_per_second=self.stats.rolling_requests_per_second,
+                # New RPS accuracy and compensation metrics
+                target_requests_per_second=target_rps,
+                achieved_rps_accuracy=rps_accuracy,
+                latency_compensation_active=settings.latency_compensation_enabled,
+                adaptive_scaling_active=self._adaptive_scaling_active,
+                current_worker_count=current_workers,
+                base_worker_count=base_workers,
+                avg_compensation_ms=avg_compensation,
             )
 
     async def ramp_to_config(self, new_config: LoadTestConfig) -> None:
@@ -188,18 +230,31 @@ class LoadGenerator:
         if old_rps == new_rps:
             return
 
-        # Calculate new task configuration
-        new_task_count, new_interval = self._calculate_worker_config(new_rps)
-        current_task_count = len(self._tasks)
+        # Calculate new worker count (excludes adaptive scaling monitor)
+        new_worker_count, new_interval = self._calculate_worker_config(new_rps)
 
-        if new_task_count > current_task_count:
-            # Scale up: add more tasks
-            for _ in range(new_task_count - current_task_count):
+        # Count current worker tasks (exclude adaptive scaling monitor)
+        current_worker_count = 0
+        scaling_monitor_task = None
+        worker_tasks = []
+
+        for task in self._tasks:
+            coro = task.get_coro()
+            coro_name = coro.__name__ if coro and hasattr(coro, "__name__") else str(task)
+            if "_adaptive_scaling_monitor" in coro_name:
+                scaling_monitor_task = task
+            else:
+                worker_tasks.append(task)
+                current_worker_count += 1
+
+        if new_worker_count > current_worker_count:
+            # Scale up: add more worker tasks
+            for _ in range(new_worker_count - current_worker_count):
                 task = asyncio.create_task(self._generate_load_worker(new_interval))
-                self._tasks.append(task)
-        elif new_task_count < current_task_count:
-            # Scale down: cancel excess tasks
-            tasks_to_cancel = self._tasks[new_task_count:]
+                worker_tasks.append(task)
+        elif new_worker_count < current_worker_count:
+            # Scale down: cancel excess worker tasks
+            tasks_to_cancel = worker_tasks[new_worker_count:]
             for task in tasks_to_cancel:
                 if not task.done():
                     task.cancel()
@@ -208,11 +263,131 @@ class LoadGenerator:
             if tasks_to_cancel:
                 await asyncio.gather(*tasks_to_cancel, return_exceptions=True)
 
-            # Keep only the required number of tasks
-            self._tasks = self._tasks[:new_task_count]
+            # Keep only the required number of worker tasks
+            worker_tasks = worker_tasks[:new_worker_count]
+
+        # Rebuild task list: workers + scaling monitor (if it exists)
+        self._tasks = worker_tasks[:]
+        if scaling_monitor_task is not None:
+            self._tasks.append(scaling_monitor_task)
 
         # Note: Existing tasks will naturally adjust to the new interval via their next sleep cycle
         # This provides gradual ramping rather than immediate step changes
+
+    async def _check_and_apply_adaptive_scaling(self) -> None:
+        """Check if adaptive scaling should be applied based on current performance."""
+        if not settings.adaptive_scaling_enabled or not self.is_running:
+            return
+
+        current_time = time.time()
+
+        # Check cooldown period
+        if current_time - self._last_scaling_time < settings.scaling_cooldown_seconds:
+            return
+
+        # Calculate average response time from recent requests
+        self._clean_old_requests()
+        if len(self._request_history) < 10:  # Need minimum samples
+            return
+
+        recent_response_times = [
+            req.response_time_ms for req in self._request_history if req.success
+        ]
+        if not recent_response_times:
+            return
+
+        avg_response_time_ms = sum(recent_response_times) / len(recent_response_times)
+
+        # Check if scaling is needed
+        should_scale_up = (
+            avg_response_time_ms > settings.latency_threshold_ms
+            and len(self._tasks) < settings.max_adaptive_workers
+        )
+
+        should_scale_down = (
+            avg_response_time_ms
+            < settings.latency_threshold_ms * 0.5  # Scale down at 50% of threshold
+            and len(self._tasks) > self._calculate_worker_config(self.config.requests_per_second)[0]
+            and self._adaptive_scaling_active  # Only scale down if we previously scaled up
+        )
+
+        if should_scale_up:
+            await self._scale_workers_up()
+            self._last_scaling_time = current_time
+            self._adaptive_scaling_active = True
+
+        elif should_scale_down:
+            await self._scale_workers_down()
+            self._last_scaling_time = current_time
+
+    async def _scale_workers_up(self) -> None:
+        """Add additional workers to handle high latency."""
+        if len(self._tasks) >= settings.max_adaptive_workers:
+            return
+
+        # Add 20% more workers or at least 1, up to the maximum
+        current_workers = len(self._tasks)
+        additional_workers = max(1, int(current_workers * 0.2))
+        target_workers = min(current_workers + additional_workers, settings.max_adaptive_workers)
+
+        # Calculate new interval for additional workers
+        _, interval = self._calculate_worker_config(self.config.requests_per_second)
+
+        # Add new worker tasks
+        for _ in range(target_workers - current_workers):
+            task = asyncio.create_task(self._generate_load_worker(interval))
+            self._tasks.append(task)
+
+    async def _scale_workers_down(self) -> None:
+        """Remove excess workers when latency is low."""
+        base_workers, _ = self._calculate_worker_config(self.config.requests_per_second)
+        current_workers = len(self._tasks)
+
+        if current_workers <= base_workers:
+            self._adaptive_scaling_active = False
+            return
+
+        # Remove 20% of excess workers or at least 1
+        excess_workers = current_workers - base_workers
+        workers_to_remove = max(1, int(excess_workers * 0.2))
+        target_workers = max(base_workers, current_workers - workers_to_remove)
+
+        # Cancel excess tasks
+        tasks_to_cancel = self._tasks[target_workers:]
+        for task in tasks_to_cancel:
+            if not task.done():
+                task.cancel()
+
+        # Wait for cancelled tasks to complete
+        if tasks_to_cancel:
+            await asyncio.gather(*tasks_to_cancel, return_exceptions=True)
+
+        # Update task list
+        self._tasks = self._tasks[:target_workers]
+
+        # Check if we've returned to base worker count
+        if len(self._tasks) == base_workers:
+            self._adaptive_scaling_active = False
+
+    def _clean_old_requests(self) -> None:
+        """Remove old requests from the rolling window for accurate averaging."""
+        current_time = time.time()
+        cutoff_time = current_time - self._rolling_window_seconds
+        while self._request_history and self._request_history[0].timestamp < cutoff_time:
+            self._request_history.popleft()
+
+    async def _adaptive_scaling_monitor(self) -> None:
+        """Monitor performance and apply adaptive scaling as needed."""
+        while self.is_running:
+            try:
+                await self._check_and_apply_adaptive_scaling()
+                # Check every 2 seconds for scaling opportunities
+                await asyncio.sleep(2.0)
+            except asyncio.CancelledError:
+                break
+            except Exception:
+                # Continue monitoring even if scaling fails
+                await asyncio.sleep(2.0)
 
     async def _generate_load_worker(self, initial_interval: float) -> None:
         """Worker coroutine that generates load at specified interval.
@@ -225,18 +400,43 @@ class LoadGenerator:
 
         while self.is_running:
             try:
+                # Record request start time for latency compensation
+                request_start_time = time.time()
+
                 # Generate and execute request
                 result, request_data = await self._execute_single_request()
                 await self._update_stats(result)
 
                 # Metrics recording removed for load_tester
 
-                # Calculate current interval distributed across all workers
-                num_workers = len(self._tasks) if self._tasks else 1
-                current_interval = num_workers / max(self.config.requests_per_second, 0.1)
+                # Calculate current interval distributed across worker tasks only (exclude monitor tasks)
+                num_workers = 0
+                for task in self._tasks:
+                    coro = task.get_coro()
+                    coro_name = coro.__name__ if coro and hasattr(coro, "__name__") else str(task)
+                    if "_adaptive_scaling_monitor" not in coro_name:
+                        num_workers += 1
+
+                num_workers = max(num_workers, 1)  # Ensure at least 1
+                target_interval = num_workers / max(self.config.requests_per_second, 0.1)
+
+                # Apply latency compensation if enabled
+                if settings.latency_compensation_enabled:
+                    request_duration = time.time() - request_start_time
+                    compensated_interval = target_interval - request_duration
+
+                    # Apply minimum sleep threshold to prevent CPU spinning
+                    min_sleep_seconds = settings.min_sleep_threshold_ms / 1000.0
+                    final_interval = max(min_sleep_seconds, compensated_interval)
+
+                    # Track compensation amount for metrics
+                    compensation_ms = (target_interval - final_interval) * 1000.0
+                    self._compensation_history.append(compensation_ms)
+                else:
+                    final_interval = target_interval
 
                 # Wait for next request interval
-                await asyncio.sleep(current_interval)
+                await asyncio.sleep(final_interval)
 
             except asyncio.CancelledError:
                 break
@@ -249,10 +449,10 @@ class LoadGenerator:
                 )
                 await self._update_stats(error_result)
 
-                # Use current interval for error sleep as well
+                # Use target interval for error sleep (no compensation for errors)
                 num_workers = len(self._tasks) if self._tasks else 1
-                current_interval = num_workers / max(self.config.requests_per_second, 0.1)
-                await asyncio.sleep(current_interval)
+                target_interval = num_workers / max(self.config.requests_per_second, 0.1)
+                await asyncio.sleep(target_interval)
 
     async def _execute_single_request(self) -> tuple[LoadGenerationResult, dict[str, str | float]]:
         """Execute a single currency conversion request.
@@ -396,7 +596,7 @@ class LoadGenerator:
                 self._request_history.popleft()
 
     def _calculate_rolling_averages(self) -> None:
-        """Calculate 1-minute rolling averages from recent request history."""
+        """Calculate 10-second rolling averages from recent request history."""
         if not self._request_history:
             self.stats.rolling_success_rate = 0.0
             self.stats.rolling_avg_response_ms = 0.0

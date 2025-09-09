@@ -147,10 +147,19 @@ class LoadTestStats(BaseModel):
     max_response_time_ms: float = 0.0
     requests_per_second: float = 0.0
 
-    # 1-minute rolling averages (calculated from recent data)
+    # 10-second rolling averages (calculated from recent data)
     rolling_success_rate: float = 0.0
     rolling_avg_response_ms: float = 0.0
     rolling_requests_per_second: float = 0.0
+
+    # RPS accuracy and latency compensation metrics
+    target_requests_per_second: float = 0.0  # Target RPS from config
+    achieved_rps_accuracy: float = 0.0  # Percentage: achieved_rps / target_rps
+    latency_compensation_active: bool = False
+    adaptive_scaling_active: bool = False
+    current_worker_count: int = 0
+    base_worker_count: int = 0
+    avg_compensation_ms: float = 0.0  # Average latency compensation applied per request
 
 
 class LoadTestResponse(BaseModel):

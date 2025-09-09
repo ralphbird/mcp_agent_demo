@@ -31,6 +31,20 @@ class LoadTesterSettings(BaseSettings):
     max_requests_per_second: float = 100.0
     request_timeout: float = 30.0
 
+    # Latency Compensation Configuration
+    latency_compensation_enabled: bool = True  # Enable to compensate for request latency
+    min_sleep_threshold_ms: float = 1.0  # Minimum sleep to prevent CPU spinning
+
+    # Adaptive Worker Scaling Configuration
+    adaptive_scaling_enabled: bool = True  # Enable adaptive scaling based on latency
+    max_adaptive_workers: int = 50
+    latency_threshold_ms: float = 500.0  # Scale up if avg latency exceeds this
+    scaling_cooldown_seconds: float = 5.0  # Minimum time between scaling operations
+
+    # Rate Accuracy Monitoring Configuration
+    target_accuracy_threshold: float = 0.85  # Alert if achieved RPS < 85% of target
+    accuracy_measurement_window_seconds: float = 30.0  # Window for measuring RPS accuracy
+
     @field_validator("api_port")
     @classmethod
     def validate_port(cls, v: int) -> int:
@@ -55,6 +69,63 @@ class LoadTesterSettings(BaseSettings):
         """Validate timeout values."""
         if v <= 0:
             msg = "Request timeout must be positive"
+            raise ValueError(msg)
+        return v
+
+    @field_validator("min_sleep_threshold_ms")
+    @classmethod
+    def validate_min_sleep_threshold(cls, v: float) -> float:
+        """Validate minimum sleep threshold."""
+        if v < 0:
+            msg = "Minimum sleep threshold must be non-negative"
+            raise ValueError(msg)
+        return v
+
+    @field_validator("max_adaptive_workers")
+    @classmethod
+    def validate_max_adaptive_workers(cls, v: int) -> int:
+        """Validate maximum adaptive workers."""
+        if v <= 0:
+            msg = "Maximum adaptive workers must be positive"
+            raise ValueError(msg)
+        if v > 200:
+            msg = "Maximum adaptive workers should not exceed 200 for safety"
+            raise ValueError(msg)
+        return v
+
+    @field_validator("latency_threshold_ms")
+    @classmethod
+    def validate_latency_threshold(cls, v: float) -> float:
+        """Validate latency threshold."""
+        if v <= 0:
+            msg = "Latency threshold must be positive"
+            raise ValueError(msg)
+        return v
+
+    @field_validator("scaling_cooldown_seconds")
+    @classmethod
+    def validate_scaling_cooldown(cls, v: float) -> float:
+        """Validate scaling cooldown period."""
+        if v < 0:
+            msg = "Scaling cooldown must be non-negative"
+            raise ValueError(msg)
+        return v
+
+    @field_validator("target_accuracy_threshold")
+    @classmethod
+    def validate_accuracy_threshold(cls, v: float) -> float:
+        """Validate target accuracy threshold."""
+        if not 0.1 <= v <= 1.0:
+            msg = "Target accuracy threshold must be between 0.1 and 1.0"
+            raise ValueError(msg)
+        return v
+
+    @field_validator("accuracy_measurement_window_seconds")
+    @classmethod
+    def validate_accuracy_window(cls, v: float) -> float:
+        """Validate accuracy measurement window."""
+        if v <= 0:
+            msg = "Accuracy measurement window must be positive"
             raise ValueError(msg)
         return v
 

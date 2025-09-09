@@ -93,7 +93,7 @@ LOAD_TEST_SCENARIOS: dict[LoadTestScenario, ScenarioConfig] = {
             currency_pairs=["USD_EUR", "USD_GBP", "EUR_GBP"],
             amounts=[100.0, 1000.0],
         ),
-        duration_seconds=30,
+        duration_seconds=240,
         expected_behavior="System should handle short bursts or gracefully degrade",
     ),
     LoadTestScenario.ENDURANCE: ScenarioConfig(

@@ -53,7 +53,14 @@ class TestLoadGenerator:
         try:
             await generator.start()
             initial_task_count = len(generator._tasks)
-            assert initial_task_count == 1  # Should start with 1 worker
+
+            # Account for adaptive scaling monitor task (if enabled)
+            from load_tester.config import settings
+
+            expected_initial_tasks = 1 + (
+                1 if settings.adaptive_scaling_enabled else 0
+            )  # 1 worker + scaling monitor
+            assert initial_task_count == expected_initial_tasks
 
             # Ramp to higher RPS that requires more workers
             new_config = LoadTestConfig(
@@ -66,7 +73,10 @@ class TestLoadGenerator:
 
             # Should have more tasks now
             assert len(generator._tasks) > initial_task_count
-            assert len(generator._tasks) == 10  # Should have 10 workers
+            expected_final_tasks = 10 + (
+                1 if settings.adaptive_scaling_enabled else 0
+            )  # 10 workers + scaling monitor
+            assert len(generator._tasks) == expected_final_tasks
             assert generator.config.requests_per_second == 30.0
             assert generator.config.currency_pairs == ["USD_EUR", "USD_GBP"]
             assert generator.config.amounts == [100.0, 200.0]
@@ -86,7 +96,14 @@ class TestLoadGenerator:
         try:
             await generator.start()
             initial_task_count = len(generator._tasks)
-            assert initial_task_count == 10  # Should start with 10 workers
+
+            # Account for adaptive scaling monitor task (if enabled)
+            from load_tester.config import settings
+
+            expected_initial_tasks = 10 + (
+                1 if settings.adaptive_scaling_enabled else 0
+            )  # 10 workers + scaling monitor
+            assert initial_task_count == expected_initial_tasks
 
             # Ramp to lower RPS that uses fewer workers
             new_config = LoadTestConfig(
@@ -99,7 +116,10 @@ class TestLoadGenerator:
 
             # Should have fewer tasks now
             assert len(generator._tasks) < initial_task_count
-            assert len(generator._tasks) == 1  # Should have 1 worker now
+            expected_final_tasks = 1 + (
+                1 if settings.adaptive_scaling_enabled else 0
+            )  # 1 worker + scaling monitor
+            assert len(generator._tasks) == expected_final_tasks
             assert generator.config.requests_per_second == 5.0
             assert generator.config.currency_pairs == ["USD_EUR"]
             assert generator.config.amounts == [100.0]

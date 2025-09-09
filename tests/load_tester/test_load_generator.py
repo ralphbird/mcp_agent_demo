@@ -1,12 +1,13 @@
 """Unit tests for LoadGenerator service."""
 
+import time
 from contextlib import suppress
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from load_tester.models.load_test import LoadTestConfig
-from load_tester.services.load_generator import LoadGenerationResult, LoadGenerator
+from load_tester.services.load_generator import LoadGenerationResult, LoadGenerator, RequestRecord
 
 
 class TestLoadGenerationResult:
@@ -235,3 +236,206 @@ class TestLoadGenerator:
             assert load_generator.is_running is False
             assert isinstance(stats.total_requests, int)
             assert isinstance(stats.successful_requests, int)
+
+
+class TestWorkerConfiguration:
+    """Test worker configuration logic for different RPS values."""
+
+    @pytest.fixture
+    def load_generator(self):
+        """Create load generator for testing."""
+        config = LoadTestConfig(requests_per_second=1.0)
+        return LoadGenerator(config)
+
+    def test_calculate_worker_config_low_rps(self, load_generator):
+        """Test worker config for low RPS values."""
+        # Low RPS should use single worker
+        num_workers, interval = load_generator._calculate_worker_config(1.0)
+        assert num_workers == 1
+        assert interval == 1.0
+
+        num_workers, interval = load_generator._calculate_worker_config(5.0)
+        assert num_workers == 1
+        assert interval == 0.2
+
+        num_workers, interval = load_generator._calculate_worker_config(10.0)
+        assert num_workers == 1
+        assert interval == 0.1
+
+    def test_calculate_worker_config_high_rps(self, load_generator):
+        """Test worker config for high RPS values."""
+        # High RPS should use multiple workers but limited
+        num_workers, interval = load_generator._calculate_worker_config(20.0)
+        expected_workers = min(int(20.0 / 2), 10)  # min(10, 10) = 10
+        assert num_workers == expected_workers
+        assert interval == expected_workers / 20.0
+
+        num_workers, interval = load_generator._calculate_worker_config(100.0)
+        expected_workers = min(int(100.0 / 2), 10)  # min(50, 10) = 10
+        assert num_workers == 10  # Capped at 10
+        assert interval == 10 / 100.0  # 0.1
+
+    def test_calculate_worker_config_boundary(self, load_generator):
+        """Test worker config at boundary values."""
+        # Test exactly at boundary (10 RPS)
+        num_workers, interval = load_generator._calculate_worker_config(10.0)
+        assert num_workers == 1
+        assert interval == 0.1
+
+        # Test just above boundary (11 RPS)
+        num_workers, interval = load_generator._calculate_worker_config(11.0)
+        expected_workers = min(int(11.0 / 2), 10)  # min(5, 10) = 5
+        assert num_workers == expected_workers
+        assert interval == expected_workers / 11.0
+
+
+class TestRollingAverages:
+    """Test rolling averages calculation functionality."""
+
+    @pytest.fixture
+    def load_generator(self):
+        """Create load generator for testing."""
+        config = LoadTestConfig(requests_per_second=1.0)
+        generator = LoadGenerator(config)
+        # Set shorter window for faster testing
+        generator._rolling_window_seconds = 10.0
+        return generator
+
+    def test_request_record_creation(self):
+        """Test RequestRecord creation."""
+        record = RequestRecord(
+            timestamp=time.time(),
+            success=True,
+            response_time_ms=100.0,
+        )
+        assert record.success is True
+        assert record.response_time_ms == 100.0
+        assert isinstance(record.timestamp, float)
+
+    @pytest.mark.asyncio
+    async def test_rolling_window_cleanup(self, load_generator):
+        """Test that old requests are cleaned from rolling window."""
+        current_time = time.time()
+
+        # Add requests with different timestamps
+        old_result = LoadGenerationResult(success=True, response_time_ms=100.0)
+        recent_result = LoadGenerationResult(success=True, response_time_ms=150.0)
+
+        # Add old request first
+        with patch("time.time", return_value=current_time - 15.0):  # 15s ago (outside 10s window)
+            await load_generator._update_stats(old_result)
+
+        # At this point we should have 1 request
+        assert len(load_generator._request_history) == 1
+
+        # Add recent request - this should trigger cleanup of old request
+        with patch("time.time", return_value=current_time):
+            await load_generator._update_stats(recent_result)
+
+        # Old request should be cleaned automatically, only recent one remains
+        assert len(load_generator._request_history) == 1
+        assert load_generator._request_history[0].response_time_ms == 150.0
+
+    @pytest.mark.asyncio
+    async def test_rolling_success_rate_calculation(self, load_generator):
+        """Test rolling success rate calculation."""
+        current_time = time.time()
+
+        # Add mix of successful and failed requests
+        results = [
+            LoadGenerationResult(success=True, response_time_ms=100.0),
+            LoadGenerationResult(success=True, response_time_ms=120.0),
+            LoadGenerationResult(success=False, response_time_ms=0.0, error_message="Error"),
+            LoadGenerationResult(success=True, response_time_ms=90.0),
+        ]
+
+        with patch("time.time", return_value=current_time):
+            for result in results:
+                await load_generator._update_stats(result)
+
+            load_generator._calculate_rolling_averages()
+
+        # 3 successful out of 4 total = 75%
+        assert load_generator.stats.rolling_success_rate == 75.0
+
+    @pytest.mark.asyncio
+    async def test_rolling_avg_response_time_calculation(self, load_generator):
+        """Test rolling average response time calculation."""
+        current_time = time.time()
+
+        # Add successful requests with known response times
+        results = [
+            LoadGenerationResult(success=True, response_time_ms=100.0),
+            LoadGenerationResult(success=True, response_time_ms=200.0),
+            LoadGenerationResult(
+                success=False, response_time_ms=500.0, error_message="Error"
+            ),  # Should be excluded
+            LoadGenerationResult(success=True, response_time_ms=150.0),
+        ]
+
+        with patch("time.time", return_value=current_time):
+            for result in results:
+                await load_generator._update_stats(result)
+
+            load_generator._calculate_rolling_averages()
+
+        # Average of successful requests: (100 + 200 + 150) / 3 = 150.0
+        assert load_generator.stats.rolling_avg_response_ms == 150.0
+
+    @pytest.mark.asyncio
+    async def test_rolling_rps_calculation_accuracy(self, load_generator):
+        """Test rolling RPS calculation uses full window size."""
+        current_time = time.time()
+
+        # Add 5 requests within the rolling window
+        results = [
+            LoadGenerationResult(success=True, response_time_ms=100.0),
+            LoadGenerationResult(success=True, response_time_ms=100.0),
+            LoadGenerationResult(success=True, response_time_ms=100.0),
+            LoadGenerationResult(success=True, response_time_ms=100.0),
+            LoadGenerationResult(success=True, response_time_ms=100.0),
+        ]
+
+        with patch("time.time", return_value=current_time):
+            for result in results:
+                await load_generator._update_stats(result)
+
+            load_generator._calculate_rolling_averages()
+
+        # RPS should be total_requests / window_size = 5 / 10.0 = 0.5
+        assert load_generator.stats.rolling_requests_per_second == 0.5
+
+    @pytest.mark.asyncio
+    async def test_empty_rolling_window(self, load_generator):
+        """Test rolling averages with empty request history."""
+        load_generator._calculate_rolling_averages()
+
+        assert load_generator.stats.rolling_success_rate == 0.0
+        assert load_generator.stats.rolling_avg_response_ms == 0.0
+        assert load_generator.stats.rolling_requests_per_second == 0.0
+
+    @pytest.mark.asyncio
+    async def test_rolling_averages_integration(self, load_generator):
+        """Test rolling averages integration with get_current_stats."""
+        current_time = time.time()
+
+        # Add some test data
+        results = [
+            LoadGenerationResult(success=True, response_time_ms=100.0),
+            LoadGenerationResult(success=True, response_time_ms=200.0),
+        ]
+
+        with patch("time.time", return_value=current_time):
+            for result in results:
+                await load_generator._update_stats(result)
+
+            # get_current_stats should call _calculate_rolling_averages
+            stats = await load_generator.get_current_stats()
+
+        # Verify rolling fields are populated in response
+        assert hasattr(stats, "rolling_success_rate")
+        assert hasattr(stats, "rolling_avg_response_ms")
+        assert hasattr(stats, "rolling_requests_per_second")
+        assert stats.rolling_success_rate == 100.0  # Both successful
+        assert stats.rolling_avg_response_ms == 150.0  # (100 + 200) / 2
+        assert stats.rolling_requests_per_second == 0.2  # 2 requests / 10s window

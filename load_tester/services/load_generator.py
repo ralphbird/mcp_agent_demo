@@ -73,6 +73,23 @@ class LoadGenerator:
         self._request_history: deque[RequestRecord] = deque()
         self._rolling_window_seconds = 60.0
 
+    def _calculate_worker_config(self, rps: float) -> tuple[int, float]:
+        """Calculate optimal number of workers and interval for given RPS.
+
+        Args:
+            rps: Target requests per second
+
+        Returns:
+            Tuple of (num_workers, interval_per_worker)
+        """
+        if rps <= 10:
+            # For low RPS, use single worker with appropriate interval
+            return 1, 1.0 / rps
+        # For higher RPS, use multiple workers but limit to reasonable number
+        num_workers = min(int(rps / 2), 10)
+        interval = num_workers / rps
+        return num_workers, interval
+
     async def start(self) -> None:
         """Start the load generation process."""
         if self.is_running:
@@ -86,8 +103,8 @@ class LoadGenerator:
         )
 
         # Start load generation tasks
-        interval = 1.0 / self.config.requests_per_second
-        for _ in range(max(1, int(self.config.requests_per_second))):
+        num_workers, interval = self._calculate_worker_config(self.config.requests_per_second)
+        for _ in range(num_workers):
             task = asyncio.create_task(self._generate_load_worker(interval))
             self._tasks.append(task)
 
@@ -172,8 +189,7 @@ class LoadGenerator:
             return
 
         # Calculate new task configuration
-        new_interval = 1.0 / new_rps
-        new_task_count = max(1, int(new_rps))
+        new_task_count, new_interval = self._calculate_worker_config(new_rps)
         current_task_count = len(self._tasks)
 
         if new_task_count > current_task_count:
@@ -414,6 +430,5 @@ class LoadGenerator:
         )
 
         # Requests per second over the rolling window
-        if recent_requests:
-            time_span = max(1.0, current_time - recent_requests[0].timestamp)
-            self.stats.rolling_requests_per_second = total_recent / time_span
+        # Calculate RPS as total requests in window divided by window size
+        self.stats.rolling_requests_per_second = total_recent / self._rolling_window_seconds

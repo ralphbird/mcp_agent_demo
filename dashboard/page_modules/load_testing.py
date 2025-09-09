@@ -208,13 +208,44 @@ def show_load_testing_page():
             "🔶 Load test has been stopped. You can start a new test or use Reset to return to idle state."
         )
 
+        # Add reset and restart options for stopped tests
+        col1, col2 = st.columns(2)
+
+        with col1:
+            if st.button("🔄 Reset to Idle", type="secondary"):
+                # Reset by getting fresh status (this will show idle state)
+                st.rerun()
+
+        with col2:
+            st.markdown("**🚀 Quick Restart:**")
+
+        # Quick restart options
+        restart_col1, restart_col2 = st.columns(2)
+
+        with restart_col1:
+            if st.button("🚀 Restart Light Test (1 RPS)", type="primary"):
+                result = start_simple_load_test(
+                    1.0, error_injection_enabled=False, error_injection_rate=0.05
+                )
+                if result:
+                    st.success("Light test restarted!")
+                    st.rerun()
+
+        with restart_col2:
+            if st.button("🚀 Restart Moderate Test (5 RPS)", type="primary"):
+                result = start_simple_load_test(
+                    5.0, error_injection_enabled=False, error_injection_rate=0.05
+                )
+                if result:
+                    st.success("Moderate test restarted!")
+                    st.rerun()
+
     else:
         # Show start options for inactive tests
         tab1, tab2, tab3 = st.tabs(["📋 Scenario Tests", "🚀 Simple Test", "⚙️ Custom Test"])
 
         with tab1:
             st.markdown("**Choose from predefined load test scenarios:**")
-            st.info("💡 All scenario tests use optimized configuration with comprehensive coverage")
 
             scenarios = get_load_test_scenarios()
             if scenarios:

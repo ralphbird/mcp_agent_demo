@@ -44,17 +44,20 @@ class TestLoadGenerator:
     async def test_ramp_to_higher_rps(self):
         """Test ramping to higher RPS increases worker tasks."""
         config = LoadTestConfig(
-            requests_per_second=1.0, currency_pairs=["USD_EUR"], amounts=[100.0]
+            requests_per_second=5.0,
+            currency_pairs=["USD_EUR"],
+            amounts=[100.0],  # Will use 1 worker
         )
         generator = LoadGenerator(config)
 
         try:
             await generator.start()
             initial_task_count = len(generator._tasks)
+            assert initial_task_count == 1  # Should start with 1 worker
 
-            # Ramp to higher RPS
+            # Ramp to higher RPS that requires more workers
             new_config = LoadTestConfig(
-                requests_per_second=3.0,
+                requests_per_second=30.0,  # Will use min(30/2, 10) = 10 workers
                 currency_pairs=["USD_EUR", "USD_GBP"],
                 amounts=[100.0, 200.0],
             )
@@ -63,7 +66,8 @@ class TestLoadGenerator:
 
             # Should have more tasks now
             assert len(generator._tasks) > initial_task_count
-            assert generator.config.requests_per_second == 3.0
+            assert len(generator._tasks) == 10  # Should have 10 workers
+            assert generator.config.requests_per_second == 30.0
             assert generator.config.currency_pairs == ["USD_EUR", "USD_GBP"]
             assert generator.config.amounts == [100.0, 200.0]
 
@@ -73,7 +77,7 @@ class TestLoadGenerator:
     async def test_ramp_to_lower_rps(self):
         """Test ramping to lower RPS reduces worker tasks."""
         config = LoadTestConfig(
-            requests_per_second=5.0,
+            requests_per_second=40.0,  # Will use min(40/2, 10) = 10 workers
             currency_pairs=["USD_EUR", "USD_GBP", "USD_JPY"],
             amounts=[100.0, 200.0, 300.0],
         )
@@ -82,17 +86,21 @@ class TestLoadGenerator:
         try:
             await generator.start()
             initial_task_count = len(generator._tasks)
+            assert initial_task_count == 10  # Should start with 10 workers
 
-            # Ramp to lower RPS
+            # Ramp to lower RPS that uses fewer workers
             new_config = LoadTestConfig(
-                requests_per_second=2.0, currency_pairs=["USD_EUR"], amounts=[100.0]
+                requests_per_second=5.0,
+                currency_pairs=["USD_EUR"],
+                amounts=[100.0],  # Will use 1 worker
             )
 
             await generator.ramp_to_config(new_config)
 
             # Should have fewer tasks now
             assert len(generator._tasks) < initial_task_count
-            assert generator.config.requests_per_second == 2.0
+            assert len(generator._tasks) == 1  # Should have 1 worker now
+            assert generator.config.requests_per_second == 5.0
             assert generator.config.currency_pairs == ["USD_EUR"]
             assert generator.config.amounts == [100.0]
 

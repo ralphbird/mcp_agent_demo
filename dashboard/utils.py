@@ -1,12 +1,27 @@
 """Utility functions for the currency conversion dashboard."""
 
 import os
+import time
+from typing import Any
 
+import jwt
 import requests
 
 # Configuration
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
 LOAD_TESTER_URL = os.getenv("LOAD_TESTER_URL", "http://localhost:8001")
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "dev-secret-key-change-in-production")
+
+
+def generate_dashboard_jwt_token() -> str:
+    """Generate JWT token for dashboard API calls."""
+    payload: dict[str, Any] = {
+        "account_id": "dashboard-user",
+        "user_id": "dashboard",
+        "iat": int(time.time()),  # Issued at
+        # No expiration for dashboard usage
+    }
+    return jwt.encode(payload, JWT_SECRET_KEY, algorithm="HS256")
 
 
 def check_api_health():
@@ -42,6 +57,10 @@ def get_current_rates():
 def convert_currency(amount: float, from_currency: str, to_currency: str):
     """Convert currency using the API."""
     try:
+        # Generate JWT token for authentication
+        token = generate_dashboard_jwt_token()
+        headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+
         response = requests.post(
             f"{API_BASE_URL}/api/v1/convert",
             json={
@@ -49,6 +68,7 @@ def convert_currency(amount: float, from_currency: str, to_currency: str):
                 "from_currency": from_currency,
                 "to_currency": to_currency,
             },
+            headers=headers,
             timeout=10,
         )
         response.raise_for_status()

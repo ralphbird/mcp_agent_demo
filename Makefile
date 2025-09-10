@@ -54,7 +54,7 @@ dev:
 	@echo "💡 Make sure your external currency API is running on localhost:8000"
 	@echo ""
 	@echo "Starting load tester API..."
-	poetry run python -m load_tester.main &
+	LOAD_TESTER_TARGET_API_BASE_URL=http://localhost:8000 poetry run python -m load_tester.main &
 	@echo "Starting Streamlit dashboard..."
 	poetry run streamlit run dashboard/app.py --server.address 0.0.0.0 --server.port 8501
 
@@ -63,7 +63,7 @@ run:
 	@echo "🚀 Starting load tester API..."
 	@echo "🔥 Load Tester API: http://localhost:8001"
 	@echo ""
-	poetry run python -m load_tester.main
+	LOAD_TESTER_TARGET_API_BASE_URL=http://localhost:8000 poetry run python -m load_tester.main
 
 # Build Docker containers
 build:

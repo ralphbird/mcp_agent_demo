@@ -1254,9 +1254,11 @@ class TestIPSpoofingIntegration:
                 assert stats["current_ip"] is not None
 
             # Request count should increment (mod rotation_interval)
-            expected_count = (i + 1) % int(stats["rotation_interval"])
+            rotation_interval = stats["rotation_interval"]
+            assert isinstance(rotation_interval, int)
+            expected_count = (i + 1) % rotation_interval
             if expected_count == 0:
-                expected_count = int(stats["rotation_interval"])
+                expected_count = rotation_interval
             assert stats["request_count"] == expected_count
 
     def test_spoofing_with_different_regions(self, spoofing_config):

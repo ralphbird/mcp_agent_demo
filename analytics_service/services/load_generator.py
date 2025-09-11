@@ -199,8 +199,8 @@ class LoadGenerator:
 
             base_workers, _ = self._calculate_worker_config(target_rps)
 
-            # Create stats object
-            stats = LoadTestStats(
+            # Create and return stats object
+            return LoadTestStats(
                 total_requests=self.stats.total_requests,
                 successful_requests=self.stats.successful_requests,
                 failed_requests=self.stats.failed_requests,
@@ -220,8 +220,6 @@ class LoadGenerator:
                 base_worker_count=base_workers,
                 avg_compensation_ms=avg_compensation,
             )
-
-            return stats
 
     def get_ip_spoofing_stats(self) -> dict[str, int | str | bool | list[str] | None]:
         """Get current IP spoofing statistics.

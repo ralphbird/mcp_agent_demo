@@ -94,8 +94,8 @@ def show_attack_simulation_page():
         burst_rps = st.slider(
             "Peak RPS",
             min_value=10,
-            max_value=200,
-            value=50,
+            max_value=2000,
+            value=100,
             help="Peak request rate during bursts",
         )
 

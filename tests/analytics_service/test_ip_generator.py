@@ -109,7 +109,7 @@ class TestIPGenerator:
         assert len(ip_values) == 1
 
         # Verify the IP is valid
-        ip = list(ip_values)[0]
+        ip = next(iter(ip_values))
         IPv4Address(ip)  # Should not raise exception
 
     def test_get_spoofing_headers_rotation(self):
@@ -172,7 +172,7 @@ class TestIPGenerator:
         assert stats["rotation_interval"] == 3
         assert stats["regions"] == ["US", "EU"]
         assert stats["request_count"] == 0
-        assert int(stats["available_ranges"]) > 0
+        assert isinstance(stats["available_ranges"], int) and stats["available_ranges"] > 0
 
     def test_stats_updates_with_usage(self):
         """Test that stats update correctly as generator is used."""
@@ -228,7 +228,7 @@ class TestIPGeneratorRegionalDistribution:
 
         # Should have more available ranges
         stats = generator.get_stats()
-        assert int(stats["available_ranges"]) > 1000
+        assert isinstance(stats["available_ranges"], int) and stats["available_ranges"] > 1000
 
     def test_residential_only(self):
         """Test generator with residential IPs only."""
@@ -301,15 +301,12 @@ class TestIPGeneratorEdgeCases:
 
         # Should work with valid regions only
         stats = generator.get_stats()
-        assert int(stats["available_ranges"]) > 0
+        assert isinstance(stats["available_ranges"], int) and stats["available_ranges"] > 0
 
     def test_zero_rotation_interval(self):
         """Test generator behavior with various rotation intervals."""
         # rotation_interval=1 should change every request
         generator = IPGenerator(regions=["US"], rotation_interval=1)
-
-        ip1 = generator.get_next_ip()
-        ip2 = generator.get_next_ip()
 
         # Very likely to be different with large IP space
         # Allow for small chance of collision
@@ -337,7 +334,7 @@ class TestIPGeneratorEdgeCases:
 
         # Simulate concurrent access patterns
         results = []
-        for batch in range(5):
+        for _batch in range(5):
             batch_ips = []
             for _ in range(3):
                 batch_ips.append(generator.get_next_ip())

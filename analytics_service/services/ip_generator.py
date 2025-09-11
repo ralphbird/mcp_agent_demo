@@ -118,6 +118,7 @@ class IPGenerator:
     def __init__(
         self,
         regions: list[str] | None = None,
+        *,
         include_residential: bool = True,
         include_datacenter: bool = True,
         rotation_interval: int = 5,

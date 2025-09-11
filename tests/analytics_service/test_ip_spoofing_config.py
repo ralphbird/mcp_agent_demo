@@ -28,7 +28,7 @@ class TestIPSpoofingConfiguration:
         import os
 
         env_backup = {}
-        env_keys = [k for k in os.environ.keys() if k.startswith("ANALYTICS_SERVICE_")]
+        env_keys = [k for k in os.environ if k.startswith("ANALYTICS_SERVICE_")]
         for key in env_keys:
             env_backup[key] = os.environ.pop(key)
 

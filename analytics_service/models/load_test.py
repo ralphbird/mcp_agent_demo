@@ -73,6 +73,10 @@ class LoadTestConfig(BaseModel):
         le=0.5,
         description="Percentage of requests that should intentionally fail (0.0-0.5)",
     )
+    burst_mode: bool = Field(
+        default=False,
+        description="Enable burst mode - use single random IP for entire test instead of rotating IPs",
+    )
 
     @classmethod
     def create_full_config(
@@ -80,6 +84,7 @@ class LoadTestConfig(BaseModel):
         requests_per_second: float = 1.0,
         error_injection_enabled: bool = False,
         error_injection_rate: float = 0.05,
+        burst_mode: bool = False,
     ) -> "LoadTestConfig":
         """Create a config with all currency pairs and appropriate amounts.
 
@@ -90,6 +95,7 @@ class LoadTestConfig(BaseModel):
             requests_per_second: Target requests per second
             error_injection_enabled: Enable error injection for realistic testing
             error_injection_rate: Percentage of requests that should fail (0.0-0.5)
+            burst_mode: Enable burst mode - use single IP instead of rotating
 
         Returns:
             LoadTestConfig with all pairs and appropriate amounts
@@ -100,6 +106,7 @@ class LoadTestConfig(BaseModel):
             amounts=_get_all_amounts(),
             error_injection_enabled=error_injection_enabled,
             error_injection_rate=error_injection_rate,
+            burst_mode=burst_mode,
         )
 
     def ensure_complete_config(self) -> "LoadTestConfig":
@@ -124,6 +131,7 @@ class LoadTestConfig(BaseModel):
             amounts=amounts,
             error_injection_enabled=self.error_injection_enabled,
             error_injection_rate=self.error_injection_rate,
+            burst_mode=self.burst_mode,
         )
 
 

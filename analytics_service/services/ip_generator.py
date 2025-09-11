@@ -122,6 +122,7 @@ class IPGenerator:
         include_residential: bool = True,
         include_datacenter: bool = True,
         rotation_interval: int = 5,
+        burst_mode: bool = False,
     ):
         """Initialize IP generator.
 
@@ -130,11 +131,13 @@ class IPGenerator:
             include_residential: Include residential ISP ranges
             include_datacenter: Include cloud/datacenter ranges
             rotation_interval: Number of requests before rotating IP
+            burst_mode: If True, stick to single IP for entire burst instead of rotating
         """
         self.regions = regions or ["US", "EU", "APAC"]
         self.include_residential = include_residential
         self.include_datacenter = include_datacenter
         self.rotation_interval = rotation_interval
+        self.burst_mode = burst_mode
 
         self._current_ip: str | None = None
         self._request_count = 0
@@ -183,7 +186,13 @@ class IPGenerator:
         Returns:
             IP address string for use in headers
         """
-        # Rotate IP if interval reached or no current IP
+        # In burst mode, stick to the same IP once generated
+        if self.burst_mode:
+            if self._current_ip is None:
+                self._current_ip = self._generate_new_ip()
+            return self._current_ip
+
+        # Normal mode: rotate IP if interval reached or no current IP
         if self._current_ip is None or self._request_count >= self.rotation_interval:
             self._current_ip = self._generate_new_ip()
             self._request_count = 0
@@ -268,7 +277,7 @@ class IPGenerator:
         """
         return self._current_ip
 
-    def get_stats(self) -> dict[str, int | str | list[str] | None]:
+    def get_stats(self) -> dict[str, int | str | list[str] | bool | None]:
         """Get generator statistics.
 
         Returns:
@@ -278,6 +287,7 @@ class IPGenerator:
             "current_ip": self._current_ip,
             "request_count": self._request_count,
             "rotation_interval": self.rotation_interval,
+            "burst_mode": self.burst_mode,
             "available_ranges": len(self._available_ranges),
             "regions": self.regions,
         }

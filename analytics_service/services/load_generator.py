@@ -89,6 +89,7 @@ class LoadGenerator:
                 include_residential=settings.include_residential_ips,
                 include_datacenter=settings.include_datacenter_ips,
                 rotation_interval=settings.ip_rotation_interval,
+                burst_mode=config.burst_mode,
             )
 
     def _calculate_worker_config(self, rps: float) -> tuple[int, float]:

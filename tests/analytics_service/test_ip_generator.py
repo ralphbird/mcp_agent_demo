@@ -407,3 +407,80 @@ class TestIPGeneratorNetworkValidation:
             test_net2 = ipaddress.IPv4Network("203.0.113.0/24")
 
             assert ip_addr in test_net1 or ip_addr in test_net2
+
+
+class TestIPGeneratorBurstMode:
+    """Test IP generator burst mode functionality."""
+
+    def test_burst_mode_initialization(self):
+        """Test burst mode initialization."""
+        generator = IPGenerator(burst_mode=True)
+
+        assert generator.burst_mode is True
+        stats = generator.get_stats()
+        assert stats["burst_mode"] is True
+
+    def test_burst_mode_single_ip_persistence(self):
+        """Test that burst mode uses single IP for multiple requests."""
+        generator = IPGenerator(regions=["US"], burst_mode=True, rotation_interval=1)
+
+        # Get multiple IPs - should all be the same in burst mode
+        ip1 = generator.get_next_ip()
+        ip2 = generator.get_next_ip()
+        ip3 = generator.get_next_ip()
+        ip4 = generator.get_next_ip()
+        ip5 = generator.get_next_ip()
+
+        # All IPs should be identical in burst mode
+        assert ip1 == ip2 == ip3 == ip4 == ip5
+        assert generator.get_current_ip() == ip1
+
+    def test_burst_mode_vs_normal_mode_behavior(self):
+        """Test difference between burst mode and normal mode."""
+        # Normal mode with very short rotation interval
+        normal_generator = IPGenerator(regions=["US"], burst_mode=False, rotation_interval=1)
+
+        # Burst mode
+        burst_generator = IPGenerator(regions=["US"], burst_mode=True, rotation_interval=1)
+
+        # Normal mode should rotate IPs (generate them but don't store for comparison)
+        [normal_generator.get_next_ip() for _ in range(5)]
+
+        # Burst mode should use same IP
+        burst_ips = [burst_generator.get_next_ip() for _ in range(5)]
+
+        # Normal mode might have different IPs (though not guaranteed due to randomness)
+        # Burst mode should definitely have all same IPs
+        assert len(set(burst_ips)) == 1, "Burst mode should use single IP"
+        assert all(ip == burst_ips[0] for ip in burst_ips), "All burst IPs should be identical"
+
+    def test_burst_mode_spoofing_headers_consistency(self):
+        """Test that spoofing headers are consistent in burst mode."""
+        generator = IPGenerator(regions=["US"], burst_mode=True)
+
+        # Get multiple sets of headers
+        headers1 = generator.get_spoofing_headers()
+        headers2 = generator.get_spoofing_headers()
+        headers3 = generator.get_spoofing_headers()
+
+        # All headers should have the same IP addresses
+        assert (
+            headers1["X-Forwarded-For"]
+            == headers2["X-Forwarded-For"]
+            == headers3["X-Forwarded-For"]
+        )
+        assert headers1["X-Real-IP"] == headers2["X-Real-IP"] == headers3["X-Real-IP"]
+        assert headers1["X-Client-IP"] == headers2["X-Client-IP"] == headers3["X-Client-IP"]
+
+    def test_burst_mode_stats_tracking(self):
+        """Test that stats properly track burst mode status."""
+        generator = IPGenerator(regions=["US"], burst_mode=True)
+
+        # Generate some IPs
+        for _ in range(10):
+            generator.get_next_ip()
+
+        stats = generator.get_stats()
+        assert stats["burst_mode"] is True
+        assert stats["current_ip"] is not None
+        assert stats["request_count"] == 0  # Burst mode doesn't increment request count

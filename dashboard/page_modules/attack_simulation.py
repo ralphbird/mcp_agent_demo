@@ -364,6 +364,7 @@ def start_load_test(test_type: str, rps: float, duration: int) -> None:
             "requests_per_second": rps,
             "error_injection_enabled": test_type == "burst",
             "error_injection_rate": 0.05 if test_type == "burst" else 0.01,
+            "burst_mode": test_type == "burst",  # Enable single IP mode for burst tests
         }
 
         response = requests.post(

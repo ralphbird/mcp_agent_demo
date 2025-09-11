@@ -150,7 +150,9 @@ def get_load_test_scenarios():
 def get_scenario_details(scenario: str):
     """Get details for a specific scenario."""
     try:
-        response = requests.get(f"{ANALYTICS_SERVICE_URL}/api/load-test/scenarios/{scenario}", timeout=10)
+        response = requests.get(
+            f"{ANALYTICS_SERVICE_URL}/api/load-test/scenarios/{scenario}", timeout=10
+        )
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException:

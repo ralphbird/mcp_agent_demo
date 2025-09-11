@@ -152,19 +152,21 @@ class LoadTesterSettings(BaseSettings):
         if not v or not v.strip():
             msg = "At least one geographic region must be specified"
             raise ValueError(msg)
-        
+
         valid_regions = {"US", "EU", "APAC"}
         regions = [r.strip().upper() for r in v.split(",") if r.strip()]
-        
+
         if not regions:
             msg = "At least one geographic region must be specified"
             raise ValueError(msg)
-        
+
         for region in regions:
             if region not in valid_regions:
-                msg = f"Invalid region '{region}'. Must be one of: {', '.join(sorted(valid_regions))}"
+                msg = (
+                    f"Invalid region '{region}'. Must be one of: {', '.join(sorted(valid_regions))}"
+                )
                 raise ValueError(msg)
-        
+
         # Remove duplicates while preserving order
         unique_regions = []
         seen = set()
@@ -172,7 +174,7 @@ class LoadTesterSettings(BaseSettings):
             if region not in seen:
                 unique_regions.append(region)
                 seen.add(region)
-        
+
         return ",".join(unique_regions)  # Normalize to uppercase, deduplicated
 
     def get_ip_regions_list(self) -> list[str]:

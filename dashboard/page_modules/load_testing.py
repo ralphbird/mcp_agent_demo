@@ -4,6 +4,7 @@ import time
 
 import streamlit as st
 
+from analytics_service.models.load_test import _get_all_amounts, _get_all_currency_pairs
 from dashboard.utils import (
     check_analytics_service_health,
     get_load_test_scenarios,
@@ -14,7 +15,6 @@ from dashboard.utils import (
     start_simple_load_test,
     stop_load_test,
 )
-from analytics_service.models.load_test import _get_all_amounts, _get_all_currency_pairs
 
 
 def show_load_testing_page():

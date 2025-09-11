@@ -2,7 +2,11 @@
 
 from fastapi import APIRouter, HTTPException, Response
 
-from analytics_service.models.load_test import LoadTestConfig, LoadTestResponse, StartLoadTestRequest
+from analytics_service.models.load_test import (
+    LoadTestConfig,
+    LoadTestResponse,
+    StartLoadTestRequest,
+)
 from analytics_service.models.reports import (
     LoadTestReport,
     format_report_as_markdown,

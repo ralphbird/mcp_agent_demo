@@ -223,7 +223,7 @@ class LoadGenerator:
 
             return stats
 
-    def get_ip_spoofing_stats(self) -> dict[str, int | str | bool | None]:
+    def get_ip_spoofing_stats(self) -> dict[str, int | str | bool | list[str] | None]:
         """Get current IP spoofing statistics.
 
         Returns:

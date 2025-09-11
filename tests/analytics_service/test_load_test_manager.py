@@ -50,7 +50,9 @@ class TestLoadTestManager:
         config = LoadTestConfig()
 
         # Mock LoadGenerator to avoid actual HTTP requests
-        with patch("analytics_service.services.load_test_manager.LoadGenerator") as mock_load_gen_class:
+        with patch(
+            "analytics_service.services.load_test_manager.LoadGenerator"
+        ) as mock_load_gen_class:
             mock_load_gen = AsyncMock()
             mock_load_gen_class.return_value = mock_load_gen
 
@@ -76,7 +78,9 @@ class TestLoadTestManager:
         )
 
         # Mock LoadGenerator to avoid actual HTTP requests
-        with patch("analytics_service.services.load_test_manager.LoadGenerator") as mock_load_gen_class:
+        with patch(
+            "analytics_service.services.load_test_manager.LoadGenerator"
+        ) as mock_load_gen_class:
             mock_load_gen = AsyncMock()
             mock_load_gen_class.return_value = mock_load_gen
 
@@ -95,7 +99,9 @@ class TestLoadTestManager:
         config = LoadTestConfig()
 
         # Mock LoadGenerator to avoid actual HTTP requests
-        with patch("analytics_service.services.load_test_manager.LoadGenerator") as mock_load_gen_class:
+        with patch(
+            "analytics_service.services.load_test_manager.LoadGenerator"
+        ) as mock_load_gen_class:
             mock_load_gen = AsyncMock()
             mock_load_gen_class.return_value = mock_load_gen
 

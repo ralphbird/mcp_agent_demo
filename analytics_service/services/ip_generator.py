@@ -14,7 +14,7 @@ class IPGenerator:
             "residential": [
                 # Comcast/Xfinity
                 "73.0.0.0/8",
-                "98.0.0.0/8", 
+                "98.0.0.0/8",
                 "174.0.0.0/8",
                 "76.0.0.0/8",
                 # Verizon
@@ -33,7 +33,7 @@ class IPGenerator:
             "datacenter": [
                 # AWS US regions
                 "54.0.0.0/8",
-                "52.0.0.0/8", 
+                "52.0.0.0/8",
                 "3.0.0.0/8",
                 # Google Cloud
                 "35.0.0.0/8",
@@ -72,7 +72,7 @@ class IPGenerator:
                 # Google Cloud Europe
                 "35.156.0.0/16",
                 "35.198.0.0/16",
-                # Azure Europe  
+                # Azure Europe
                 "13.69.0.0/16",
                 "40.67.0.0/16",
                 # Hetzner
@@ -127,7 +127,7 @@ class IPGenerator:
         Args:
             regions: Geographic regions to include (US, EU, APAC)
             include_residential: Include residential ISP ranges
-            include_datacenter: Include cloud/datacenter ranges  
+            include_datacenter: Include cloud/datacenter ranges
             rotation_interval: Number of requests before rotating IP
         """
         self.regions = regions or ["US", "EU", "APAC"]
@@ -225,8 +225,8 @@ class IPGenerator:
         """
         # Use RFC 5737 documentation ranges as fallback
         test_ranges = [
-            "198.51.100.0/24",   # TEST-NET-2
-            "203.0.113.0/24",    # TEST-NET-3
+            "198.51.100.0/24",  # TEST-NET-2
+            "203.0.113.0/24",  # TEST-NET-3
         ]
 
         network = IPv4Network(random.choice(test_ranges))
@@ -251,7 +251,7 @@ class IPGenerator:
             "X-Originating-IP": spoofed_ip,
             "X-Client-IP": spoofed_ip,
             "CF-Connecting-IP": spoofed_ip,  # Cloudflare format
-            "True-Client-IP": spoofed_ip,    # Akamai format
+            "True-Client-IP": spoofed_ip,  # Akamai format
             "X-Original-Forwarded-For": spoofed_ip,
         }
 
@@ -267,7 +267,7 @@ class IPGenerator:
         """
         return self._current_ip
 
-    def get_stats(self) -> dict[str, int | str | None]:
+    def get_stats(self) -> dict[str, int | str | list[str] | None]:
         """Get generator statistics.
 
         Returns:

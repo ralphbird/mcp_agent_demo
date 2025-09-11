@@ -7,7 +7,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from analytics_service.models.load_test import LoadTestConfig
-from analytics_service.services.load_generator import LoadGenerationResult, LoadGenerator, RequestRecord
+from analytics_service.services.load_generator import (
+    LoadGenerationResult,
+    LoadGenerator,
+    RequestRecord,
+)
 
 
 class TestLoadGenerationResult:
@@ -1050,7 +1054,7 @@ class TestIPSpoofingIntegration:
         mock_settings.target_api_base_url = "http://localhost:8000"
         mock_settings.latency_compensation_enabled = False
         mock_settings.adaptive_scaling_enabled = False
-        
+
         monkeypatch.setattr("analytics_service.services.load_generator.settings", mock_settings)
         return mock_settings
 
@@ -1063,7 +1067,7 @@ class TestIPSpoofingIntegration:
         mock_settings.target_api_base_url = "http://localhost:8000"
         mock_settings.latency_compensation_enabled = False
         mock_settings.adaptive_scaling_enabled = False
-        
+
         monkeypatch.setattr("analytics_service.services.load_generator.settings", mock_settings)
         return mock_settings
 
@@ -1072,7 +1076,7 @@ class TestIPSpoofingIntegration:
     ):
         """Test load generator initializes IP spoofing when enabled."""
         generator = LoadGenerator(spoofing_config)
-        
+
         # Should have IP generator initialized
         assert generator._ip_generator is not None
         assert hasattr(generator._ip_generator, "get_spoofing_headers")
@@ -1083,17 +1087,15 @@ class TestIPSpoofingIntegration:
     ):
         """Test load generator doesn't initialize IP spoofing when disabled."""
         generator = LoadGenerator(spoofing_config)
-        
+
         # Should not have IP generator initialized
         assert generator._ip_generator is None
 
-    def test_get_ip_spoofing_stats_enabled(
-        self, spoofing_config, mock_settings_spoofing_enabled
-    ):
+    def test_get_ip_spoofing_stats_enabled(self, spoofing_config, mock_settings_spoofing_enabled):
         """Test get_ip_spoofing_stats when spoofing is enabled."""
         generator = LoadGenerator(spoofing_config)
         stats = generator.get_ip_spoofing_stats()
-        
+
         assert stats["enabled"] is True
         assert "current_ip" in stats
         assert "request_count" in stats
@@ -1101,13 +1103,11 @@ class TestIPSpoofingIntegration:
         assert "available_ranges" in stats
         assert "regions" in stats
 
-    def test_get_ip_spoofing_stats_disabled(
-        self, spoofing_config, mock_settings_spoofing_disabled
-    ):
+    def test_get_ip_spoofing_stats_disabled(self, spoofing_config, mock_settings_spoofing_disabled):
         """Test get_ip_spoofing_stats when spoofing is disabled."""
         generator = LoadGenerator(spoofing_config)
         stats = generator.get_ip_spoofing_stats()
-        
+
         assert stats["enabled"] is False
         assert stats["current_ip"] is None
         assert stats["request_count"] == 0
@@ -1120,7 +1120,7 @@ class TestIPSpoofingIntegration:
     ):
         """Test that spoofing headers are added to requests when enabled."""
         generator = LoadGenerator(spoofing_config)
-        
+
         # Mock the session and response
         mock_session = AsyncMock()
         mock_response = AsyncMock()
@@ -1128,35 +1128,35 @@ class TestIPSpoofingIntegration:
         mock_response.text = AsyncMock(return_value="success")
         mock_session.post.return_value.__aenter__.return_value = mock_response
         generator._session = mock_session
-        
+
         # Execute request
         result, request_data = await generator._execute_single_request()
-        
+
         # Verify session.post was called
         assert mock_session.post.called
         call_args = mock_session.post.call_args
-        
+
         # Check that headers include spoofing headers
         headers = call_args[1]["headers"]
-        
+
         # Should have authentication header
         assert "Authorization" in headers
         assert "Content-Type" in headers
-        
+
         # Should have IP spoofing headers
         expected_spoofing_headers = {
             "X-Forwarded-For",
             "X-Real-IP",
-            "X-Originating-IP", 
+            "X-Originating-IP",
             "X-Client-IP",
             "CF-Connecting-IP",
             "True-Client-IP",
             "X-Original-Forwarded-For",
         }
-        
+
         # Get the IP from X-Forwarded-For as reference
         spoofed_ip = headers["X-Forwarded-For"]
-        
+
         for header in expected_spoofing_headers:
             assert header in headers
             # All spoofing headers should have same IP
@@ -1168,7 +1168,7 @@ class TestIPSpoofingIntegration:
     ):
         """Test that no spoofing headers are added when disabled."""
         generator = LoadGenerator(spoofing_config)
-        
+
         # Mock the session and response
         mock_session = AsyncMock()
         mock_response = AsyncMock()
@@ -1176,32 +1176,32 @@ class TestIPSpoofingIntegration:
         mock_response.text = AsyncMock(return_value="success")
         mock_session.post.return_value.__aenter__.return_value = mock_response
         generator._session = mock_session
-        
+
         # Execute request
         result, request_data = await generator._execute_single_request()
-        
+
         # Verify session.post was called
         assert mock_session.post.called
         call_args = mock_session.post.call_args
-        
+
         # Check that headers don't include spoofing headers
         headers = call_args[1]["headers"]
-        
+
         # Should have authentication headers
         assert "Authorization" in headers
         assert "Content-Type" in headers
-        
+
         # Should NOT have IP spoofing headers
         spoofing_headers = {
             "X-Forwarded-For",
             "X-Real-IP",
             "X-Originating-IP",
-            "X-Client-IP", 
+            "X-Client-IP",
             "CF-Connecting-IP",
             "True-Client-IP",
             "X-Original-Forwarded-For",
         }
-        
+
         for header in spoofing_headers:
             assert header not in headers
 
@@ -1214,9 +1214,9 @@ class TestIPSpoofingIntegration:
         mock_settings_spoofing_enabled.include_residential_ips = False
         mock_settings_spoofing_enabled.include_datacenter_ips = True
         mock_settings_spoofing_enabled.ip_rotation_interval = 10
-        
+
         generator = LoadGenerator(spoofing_config)
-        
+
         # Verify IP generator was configured correctly
         assert generator._ip_generator is not None
         assert generator._ip_generator.regions == ["EU", "APAC"]
@@ -1230,7 +1230,7 @@ class TestIPSpoofingIntegration:
     ):
         """Test that IP spoofing stats update as requests are made."""
         generator = LoadGenerator(spoofing_config)
-        
+
         # Mock the session and response
         mock_session = AsyncMock()
         mock_response = AsyncMock()
@@ -1238,40 +1238,41 @@ class TestIPSpoofingIntegration:
         mock_response.text = AsyncMock(return_value="success")
         mock_session.post.return_value.__aenter__.return_value = mock_response
         generator._session = mock_session
-        
+
         # Initial stats
         initial_stats = generator.get_ip_spoofing_stats()
         assert initial_stats["current_ip"] is None
         assert initial_stats["request_count"] == 0
-        
+
         # Make some requests
         for i in range(3):
             await generator._execute_single_request()
             stats = generator.get_ip_spoofing_stats()
-            
+
             # IP should be generated after first request
             if i == 0:
                 assert stats["current_ip"] is not None
-            
+
             # Request count should increment (mod rotation_interval)
-            expected_count = (i + 1) % stats["rotation_interval"] 
+            expected_count = (i + 1) % int(stats["rotation_interval"])
             if expected_count == 0:
-                expected_count = stats["rotation_interval"]
+                expected_count = int(stats["rotation_interval"])
             assert stats["request_count"] == expected_count
 
     def test_spoofing_with_different_regions(self, spoofing_config):
         """Test spoofing works with different regional configurations."""
         regions_to_test = [
             ["US"],
-            ["EU"], 
+            ["EU"],
             ["APAC"],
             ["US", "EU"],
             ["US", "EU", "APAC"],
         ]
-        
+
         for regions in regions_to_test:
             # Mock settings for each region combination
             from unittest.mock import patch
+
             with patch("analytics_service.services.load_generator.settings") as mock_settings:
                 mock_settings.ip_spoofing_enabled = True
                 mock_settings.get_ip_regions_list.return_value = regions
@@ -1282,13 +1283,13 @@ class TestIPSpoofingIntegration:
                 mock_settings.target_api_base_url = "http://localhost:8000"
                 mock_settings.latency_compensation_enabled = False
                 mock_settings.adaptive_scaling_enabled = False
-                
+
                 generator = LoadGenerator(spoofing_config)
-                
+
                 # Should successfully initialize
                 assert generator._ip_generator is not None
                 assert generator._ip_generator.regions == regions
-                
+
                 # Should be able to generate IPs
                 stats = generator.get_ip_spoofing_stats()
                 assert stats["enabled"] is True
@@ -1297,7 +1298,7 @@ class TestIPSpoofingIntegration:
     def test_spoofing_performance_impact(self, spoofing_config):
         """Test that IP spoofing doesn't significantly impact performance."""
         import time
-        
+
         # Test with spoofing disabled
         with patch("analytics_service.services.load_generator.settings") as mock_settings:
             mock_settings.ip_spoofing_enabled = False
@@ -1305,9 +1306,9 @@ class TestIPSpoofingIntegration:
             mock_settings.target_api_base_url = "http://localhost:8000"
             mock_settings.latency_compensation_enabled = False
             mock_settings.adaptive_scaling_enabled = False
-            
+
             generator_disabled = LoadGenerator(spoofing_config)
-            
+
             start_time = time.time()
             for _ in range(1000):
                 headers = {"Authorization": "Bearer test", "Content-Type": "application/json"}
@@ -1315,7 +1316,7 @@ class TestIPSpoofingIntegration:
                     spoofing_headers = generator_disabled._ip_generator.get_spoofing_headers()
                     headers.update(spoofing_headers)
             disabled_time = time.time() - start_time
-        
+
         # Test with spoofing enabled
         with patch("analytics_service.services.load_generator.settings") as mock_settings:
             mock_settings.ip_spoofing_enabled = True
@@ -1327,9 +1328,9 @@ class TestIPSpoofingIntegration:
             mock_settings.target_api_base_url = "http://localhost:8000"
             mock_settings.latency_compensation_enabled = False
             mock_settings.adaptive_scaling_enabled = False
-            
+
             generator_enabled = LoadGenerator(spoofing_config)
-            
+
             start_time = time.time()
             for _ in range(1000):
                 headers = {"Authorization": "Bearer test", "Content-Type": "application/json"}
@@ -1337,7 +1338,9 @@ class TestIPSpoofingIntegration:
                     spoofing_headers = generator_enabled._ip_generator.get_spoofing_headers()
                     headers.update(spoofing_headers)
             enabled_time = time.time() - start_time
-        
+
         # Performance impact should be reasonable (less than 10x overhead)
         # Note: Enabled version does more work (IP generation), so some overhead is expected
-        assert enabled_time < disabled_time * 10.0 or enabled_time < 0.01  # Less than 10ms is acceptable
+        assert (
+            enabled_time < disabled_time * 10.0 or enabled_time < 0.01
+        )  # Less than 10ms is acceptable

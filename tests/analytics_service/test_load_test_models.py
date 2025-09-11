@@ -2,7 +2,11 @@
 
 import pytest
 
-from analytics_service.models.load_test import LoadTestConfig, _get_all_amounts, _get_all_currency_pairs
+from analytics_service.models.load_test import (
+    LoadTestConfig,
+    _get_all_amounts,
+    _get_all_currency_pairs,
+)
 
 
 class TestLoadTestConfig:

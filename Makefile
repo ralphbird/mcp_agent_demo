@@ -128,6 +128,8 @@ quality:
 	poetry run ruff check --fix load_tester/ dashboard/ tests/
 	@echo "📋 Type checking..."
 	poetry run pyright load_tester/ dashboard/ tests/
+	@echo "📄 Markdown linting..."
+	markdownlint --fix *.md
 	@echo "✅ Quality checks completed!"
 
 # Format code only

@@ -1,0 +1,25 @@
+[server]
+# Change the type of file watcher used by Streamlit
+fileWatcherType = "watchdog"
+
+# List of directories to watch for changes.
+# By default, Streamlit watches files in the current working directory
+# and its subdirectories. Use this option to specify additional
+# directories to watch. Paths must be absolute.
+folderWatchList = []
+
+# List of directories to ignore for changes.
+# By default, Streamlit watches files in the current working directory
+# and its subdirectories. Use this option to specify exceptions within
+# watched directories. This helps avoid unnecessary reruns when other
+# parts of the codebase change.
+folderWatchBlacklist = [
+    "analytics_service",
+    "tests",
+    "scripts",
+    "htmlcov",
+    ".git",
+    "__pycache__",
+    "*.pyc",
+    ".pytest_cache",
+]

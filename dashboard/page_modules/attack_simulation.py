@@ -6,7 +6,7 @@ from typing import Any
 import requests
 import streamlit as st
 
-from dashboard.utils import LOAD_TESTER_URL
+from dashboard.utils import ANALYTICS_SERVICE_URL
 
 
 def check_and_handle_auto_stop_timers():
@@ -26,7 +26,7 @@ def check_and_handle_auto_stop_timers():
     for test_id in tests_to_stop:
         timer_info = st.session_state.auto_stop_timer[test_id]
         try:
-            response = requests.post(f"{LOAD_TESTER_URL}/api/load-test/stop", timeout=10)
+            response = requests.post(f"{ANALYTICS_SERVICE_URL}/api/load-test/stop", timeout=10)
             if response.status_code == 200:
                 st.success(
                     f"✅ {timer_info['test_type'].title()} test automatically stopped after {timer_info['duration']} seconds"
@@ -342,7 +342,7 @@ def start_continuous_baseline(rps: float) -> None:
         }
 
         response = requests.post(
-            f"{LOAD_TESTER_URL}/api/load-test/concurrent/baseline/start",
+            f"{ANALYTICS_SERVICE_URL}/api/load-test/concurrent/baseline/start",
             json={"config": config},
             timeout=10,
         )
@@ -367,7 +367,7 @@ def start_load_test(test_type: str, rps: float, duration: int) -> None:
         }
 
         response = requests.post(
-            f"{LOAD_TESTER_URL}/api/load-test/start", json={"config": config}, timeout=10
+            f"{ANALYTICS_SERVICE_URL}/api/load-test/start", json={"config": config}, timeout=10
         )
 
         if response.status_code == 200:
@@ -395,7 +395,7 @@ def stop_baseline_test() -> None:
     """Stop the continuous baseline load test."""
     try:
         response = requests.post(
-            f"{LOAD_TESTER_URL}/api/load-test/concurrent/baseline/stop", timeout=10
+            f"{ANALYTICS_SERVICE_URL}/api/load-test/concurrent/baseline/stop", timeout=10
         )
 
         if response.status_code == 200:
@@ -411,11 +411,11 @@ def stop_all_tests() -> None:
     """Stop all running load tests."""
     try:
         # Stop main load test
-        response1 = requests.post(f"{LOAD_TESTER_URL}/api/load-test/stop", timeout=10)
+        response1 = requests.post(f"{ANALYTICS_SERVICE_URL}/api/load-test/stop", timeout=10)
 
         # Stop all concurrent tests (including baseline)
         response2 = requests.post(
-            f"{LOAD_TESTER_URL}/api/load-test/concurrent/stop-all", timeout=10
+            f"{ANALYTICS_SERVICE_URL}/api/load-test/concurrent/stop-all", timeout=10
         )
 
         if response1.status_code == 200 and response2.status_code == 200:
@@ -437,7 +437,7 @@ def get_baseline_test_status() -> dict[str, Any] | None:
     """Get the current status of the baseline load test."""
     try:
         response = requests.get(
-            f"{LOAD_TESTER_URL}/api/load-test/concurrent/baseline/status", timeout=10
+            f"{ANALYTICS_SERVICE_URL}/api/load-test/concurrent/baseline/status", timeout=10
         )
 
         if response.status_code == 200:
@@ -452,7 +452,7 @@ def get_baseline_test_status() -> dict[str, Any] | None:
 def get_load_test_status() -> dict[str, Any] | None:
     """Get the current status of load tests."""
     try:
-        response = requests.get(f"{LOAD_TESTER_URL}/api/load-test/status", timeout=10)
+        response = requests.get(f"{ANALYTICS_SERVICE_URL}/api/load-test/status", timeout=10)
 
         if response.status_code == 200:
             return response.json()
@@ -466,7 +466,7 @@ def get_load_test_status() -> dict[str, Any] | None:
 def show_test_report() -> None:
     """Display the test report."""
     try:
-        response = requests.get(f"{LOAD_TESTER_URL}/api/load-test/report", timeout=10)
+        response = requests.get(f"{ANALYTICS_SERVICE_URL}/api/load-test/report", timeout=10)
 
         if response.status_code == 200:
             report = response.json()

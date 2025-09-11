@@ -9,7 +9,7 @@ import requests
 
 # Configuration
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
-LOAD_TESTER_URL = os.getenv("LOAD_TESTER_URL", "http://localhost:8001")
+ANALYTICS_SERVICE_URL = os.getenv("ANALYTICS_SERVICE_URL", "http://localhost:9001")
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "dev-secret-key-change-in-production")
 
 
@@ -34,10 +34,10 @@ def check_api_health():
         return None
 
 
-def check_load_tester_health():
-    """Check if load tester service is healthy."""
+def check_analytics_service_health():
+    """Check if analytics service service is healthy."""
     try:
-        response = requests.get(f"{LOAD_TESTER_URL}/", timeout=5)
+        response = requests.get(f"{ANALYTICS_SERVICE_URL}/", timeout=5)
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException:
@@ -126,11 +126,11 @@ def convert_rates_to_base(history_data, base_currency):
     return {"rates": converted_rates}
 
 
-# Load testing utility functions
+# Analytics service utility functions
 def get_load_test_status():
     """Get the current status of the load test."""
     try:
-        response = requests.get(f"{LOAD_TESTER_URL}/api/load-test/status", timeout=10)
+        response = requests.get(f"{ANALYTICS_SERVICE_URL}/api/load-test/status", timeout=10)
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException:
@@ -140,7 +140,7 @@ def get_load_test_status():
 def get_load_test_scenarios():
     """Get available load test scenarios."""
     try:
-        response = requests.get(f"{LOAD_TESTER_URL}/api/load-test/scenarios", timeout=10)
+        response = requests.get(f"{ANALYTICS_SERVICE_URL}/api/load-test/scenarios", timeout=10)
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException:
@@ -150,7 +150,7 @@ def get_load_test_scenarios():
 def get_scenario_details(scenario: str):
     """Get details for a specific scenario."""
     try:
-        response = requests.get(f"{LOAD_TESTER_URL}/api/load-test/scenarios/{scenario}", timeout=10)
+        response = requests.get(f"{ANALYTICS_SERVICE_URL}/api/load-test/scenarios/{scenario}", timeout=10)
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException:
@@ -161,7 +161,7 @@ def start_load_test_scenario(scenario: str):
     """Start a load test using a predefined scenario."""
     try:
         response = requests.post(
-            f"{LOAD_TESTER_URL}/api/load-test/scenarios/{scenario}/start", timeout=30
+            f"{ANALYTICS_SERVICE_URL}/api/load-test/scenarios/{scenario}/start", timeout=30
         )
         response.raise_for_status()
         return response.json()
@@ -182,7 +182,7 @@ def start_simple_load_test(
             params["error_injection_rate"] = error_injection_rate
 
         response = requests.post(
-            f"{LOAD_TESTER_URL}/api/load-test/start/simple",
+            f"{ANALYTICS_SERVICE_URL}/api/load-test/start/simple",
             params=params,
             timeout=30,
         )
@@ -196,7 +196,7 @@ def start_custom_load_test(config: dict):
     """Start a custom load test."""
     try:
         response = requests.post(
-            f"{LOAD_TESTER_URL}/api/load-test/start",
+            f"{ANALYTICS_SERVICE_URL}/api/load-test/start",
             json={"config": config},
             timeout=30,
         )
@@ -209,7 +209,7 @@ def start_custom_load_test(config: dict):
 def stop_load_test():
     """Stop the current load test."""
     try:
-        response = requests.post(f"{LOAD_TESTER_URL}/api/load-test/stop", timeout=10)
+        response = requests.post(f"{ANALYTICS_SERVICE_URL}/api/load-test/stop", timeout=10)
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException:
@@ -219,7 +219,7 @@ def stop_load_test():
 def get_load_test_report():
     """Get comprehensive load test report."""
     try:
-        response = requests.get(f"{LOAD_TESTER_URL}/api/load-test/report", timeout=10)
+        response = requests.get(f"{ANALYTICS_SERVICE_URL}/api/load-test/report", timeout=10)
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException:

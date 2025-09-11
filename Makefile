@@ -2,13 +2,13 @@
 
 # Default target - shows available commands
 help:
-	@echo "🔥 Load Tester and Dashboard - Development Commands"
+	@echo "🔥 Analytics Service and Dashboard - Development Commands"
 	@echo ""
 	@echo "📋 Available Commands:"
 	@echo "  make install  - Install dependencies with Poetry"
 	@echo "  make setup    - Complete setup (install + pre-commit)"
 	@echo "  make dev      - Start development servers locally"
-	@echo "  make run      - Start load tester API locally"
+	@echo "  make run      - Start analytics service API locally"
 	@echo "  make up       - Start all services with Docker"
 	@echo "  make down     - Stop all Docker services"
 	@echo "  make logs     - View Docker service logs"
@@ -49,21 +49,21 @@ setup: install
 dev:
 	@echo "🚀 Starting development servers..."
 	@echo "📊 Dashboard: http://localhost:8501"
-	@echo "🔥 Load Tester: http://localhost:8001"
+	@echo "🔥 Analytics Service: http://localhost:9001"
 	@echo ""
 	@echo "💡 Make sure your external currency API is running on localhost:8000"
 	@echo ""
-	@echo "Starting load tester API..."
-	LOAD_TESTER_TARGET_API_BASE_URL=http://localhost:8000 poetry run python -m load_tester.main &
+	@echo "Starting analytics service API..."
+	ANALYTICS_SERVICE_TARGET_API_BASE_URL=http://localhost:8000 poetry run python -m analytics_service.main &
 	@echo "Starting Streamlit dashboard..."
 	poetry run streamlit run dashboard/app.py --server.address 0.0.0.0 --server.port 8501
 
-# Start load tester API locally
+# Start analytics service API locally
 run:
-	@echo "🚀 Starting load tester API..."
-	@echo "🔥 Load Tester API: http://localhost:8001"
+	@echo "🚀 Starting analytics service API..."
+	@echo "🔥 Analytics Service API: http://localhost:9001"
 	@echo ""
-	LOAD_TESTER_TARGET_API_BASE_URL=http://localhost:8000 poetry run python -m load_tester.main
+	ANALYTICS_SERVICE_TARGET_API_BASE_URL=http://localhost:8000 poetry run python -m analytics_service.main
 
 # Build Docker containers
 build:
@@ -73,13 +73,13 @@ build:
 
 # Start all services with Docker
 up:
-	@echo "🐳 Starting Load Tester and Dashboard..."
+	@echo "🐳 Starting Analytics Service and Dashboard..."
 	docker-compose up -d
 	@echo "✅ All services started!"
 	@echo ""
 	@echo "🚀 Available at:"
 	@echo "   📊 Dashboard: http://localhost:8501"
-	@echo "   🔥 Load Tester: http://localhost:8001"
+	@echo "   🔥 Analytics Service: http://localhost:9001"
 	@echo ""
 	@echo "💡 Make sure your external currency API is running on localhost:8000"
 	@echo "Type 'make down' to stop all services"
@@ -105,12 +105,12 @@ rebuild:
 	@echo ""
 	@echo "🚀 Available at:"
 	@echo "   📊 Dashboard: http://localhost:8501"
-	@echo "   🔥 Load Tester: http://localhost:8001"
+	@echo "   🔥 Analytics Service: http://localhost:9001"
 
 # Run test suite with coverage
 test:
 	@echo "🧪 Running test suite with coverage..."
-	poetry run pytest tests/ -v --cov=load_tester --cov-report=term-missing
+	poetry run pytest tests/ -v --cov=analytics_service --cov-report=term-missing
 	@echo "✅ Tests completed!"
 
 # Run quick tests without coverage
@@ -123,11 +123,11 @@ test-fast:
 quality:
 	@echo "🔍 Running code quality checks..."
 	@echo "📝 Formatting code..."
-	poetry run ruff format load_tester/ dashboard/ tests/
+	poetry run ruff format analytics_service/ dashboard/ tests/
 	@echo "🔧 Linting code..."
-	poetry run ruff check --fix load_tester/ dashboard/ tests/
+	poetry run ruff check --fix analytics_service/ dashboard/ tests/
 	@echo "📋 Type checking..."
-	poetry run pyright load_tester/ dashboard/ tests/
+	poetry run pyright analytics_service/ dashboard/ tests/
 	@echo "📄 Markdown linting..."
 	markdownlint --fix *.md
 	@echo "✅ Quality checks completed!"
@@ -135,19 +135,19 @@ quality:
 # Format code only
 format:
 	@echo "📝 Formatting code..."
-	poetry run ruff format load_tester/ dashboard/ tests/
+	poetry run ruff format analytics_service/ dashboard/ tests/
 	@echo "✅ Code formatted!"
 
 # Lint code only
 lint:
 	@echo "🔧 Linting code..."
-	poetry run ruff check --fix load_tester/ dashboard/ tests/
+	poetry run ruff check --fix analytics_service/ dashboard/ tests/
 	@echo "✅ Code linted!"
 
 # Type check only
 typecheck:
 	@echo "📋 Type checking..."
-	poetry run pyright load_tester/ dashboard/ tests/
+	poetry run pyright analytics_service/ dashboard/ tests/
 	@echo "✅ Type checking completed!"
 
 # Clean build artifacts and caches
@@ -173,11 +173,11 @@ docker-clean:
 # Check service health
 health:
 	@echo "🔍 Checking service health..."
-	@echo "Load Tester API:"
+	@echo "Analytics Service API:"
 	@if command -v curl > /dev/null; then \
-		curl -s http://localhost:8001/ || echo "❌ Load Tester not responding at http://localhost:8001"; \
+		curl -s http://localhost:9001/ || echo "❌ Analytics Service not responding at http://localhost:9001"; \
 	else \
-		echo "❌ curl not found. Please install curl or check http://localhost:8001 manually"; \
+		echo "❌ curl not found. Please install curl or check http://localhost:9001 manually"; \
 	fi
 	@echo "Dashboard:"
 	@if command -v curl > /dev/null; then \
@@ -188,12 +188,12 @@ health:
 
 # Show service status and URLs
 status:
-	@echo "🔥 Load Tester Status"
+	@echo "🔥 Analytics Service Status"
 	@echo ""
 	@echo "🌐 Service URLs:"
 	@echo "  Dashboard:     http://localhost:8501"
-	@echo "  Load Tester:   http://localhost:8001"
-	@echo "  API Docs:      http://localhost:8001/docs"
+	@echo "  Analytics Service:   http://localhost:9001"
+	@echo "  API Docs:      http://localhost:9001/docs"
 	@echo ""
 	@echo "🔍 Quick Health Check:"
 	@make health

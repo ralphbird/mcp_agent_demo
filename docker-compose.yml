@@ -4,7 +4,7 @@ services:
     build:
       context: .
       target: dashboard
-    container_name: load-tester-dashboard
+    container_name: analytics-service-dashboard
     env_file:
       - .env
     ports:
@@ -13,7 +13,7 @@ services:
       - PYTHONPATH=/app
       # External currency service endpoint
       - API_BASE_URL=${API_BASE_URL:-http://host.docker.internal:8000}
-      - LOAD_TESTER_URL=http://load-tester:8001
+      - ANALYTICS_SERVICE_URL=http://analytics-service:9001
     extra_hosts:
       - "host.docker.internal:host-gateway"
     logging:
@@ -26,7 +26,7 @@ services:
       - "service=dashboard"
       - "version=0.1.0"
     depends_on:
-      - load-tester
+      - analytics-service
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
       interval: 30s
@@ -35,29 +35,29 @@ services:
       start_period: 40s
     restart: unless-stopped
     networks:
-      - load-tester-network
+      - analytics-service-network
 
   # Load Tester Service
-  load-tester:
+  analytics-service:
     build:
       context: .
-      target: load-tester
-    container_name: load-tester-service
+      target: analytics-service
+    container_name: analytics-service-service
     env_file:
       - .env
     ports:
-      - "8001:8001"
+      - "9001:9001"
     volumes:
       # Log files storage
-      - load_tester_logs:/app/logs
+      - analytics_service_logs:/app/logs
     environment:
       - PYTHONPATH=/app
       # External currency service endpoint
-      - LOAD_TESTER_TARGET_API_BASE_URL=${LOAD_TESTER_TARGET_API_BASE_URL:-http://host.docker.internal:8000}
-      - LOAD_TESTER_API_HOST=0.0.0.0
-      - LOAD_TESTER_API_PORT=8001
+      - ANALYTICS_SERVICE_TARGET_API_BASE_URL=${ANALYTICS_SERVICE_TARGET_API_BASE_URL:-http://host.docker.internal:8000}
+      - ANALYTICS_SERVICE_API_HOST=0.0.0.0
+      - ANALYTICS_SERVICE_API_PORT=9001
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-dev-secret-key-change-in-production}
-      - LOAD_TESTER_LOG_FILE=/app/logs/load_tester.log
+      - ANALYTICS_SERVICE_LOG_FILE=/app/logs/analytics_service.log
     extra_hosts:
       - "host.docker.internal:host-gateway"
     logging:
@@ -67,21 +67,21 @@ services:
         max-file: "3"
         labels: "service,version"
     labels:
-      - "service=load-tester"
+      - "service=analytics-service"
       - "version=0.1.0"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8001/"]
+      test: ["CMD", "curl", "-f", "http://localhost:9001/"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
     restart: unless-stopped
     networks:
-      - load-tester-network
+      - analytics-service-network
 
 volumes:
-  load_tester_logs:
+  analytics_service_logs:
 
 networks:
-  load-tester-network:
+  analytics-service-network:
     driver: bridge

@@ -35,7 +35,7 @@ FROM base AS dashboard
 
 # Copy application code
 COPY dashboard/ ./dashboard/
-COPY load_tester/ ./load_tester/
+COPY analytics_service/ ./analytics_service/
 COPY common/ ./common/
 COPY README.md ./
 
@@ -52,11 +52,11 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 # Run the dashboard
 CMD ["poetry", "run", "streamlit", "run", "dashboard/app.py", "--server.address", "0.0.0.0", "--server.port", "8501"]
 
-# Load Tester Service Stage
-FROM base AS load-tester
+# Analytics Service Stage
+FROM base AS analytics-service
 
 # Copy application code
-COPY load_tester/ ./load_tester/
+COPY analytics_service/ ./analytics_service/
 COPY common/ ./common/
 COPY README.md ./
 
@@ -64,11 +64,11 @@ COPY README.md ./
 RUN poetry install --only=main
 
 # Expose port
-EXPOSE 8001
+EXPOSE 9001
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8001/ || exit 1
+    CMD curl -f http://localhost:9001/ || exit 1
 
-# Run the load tester
-CMD ["poetry", "run", "python", "-m", "load_tester.main"]
+# Run the analytics service
+CMD ["poetry", "run", "python", "-m", "analytics_service.main"]

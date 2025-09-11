@@ -5,7 +5,7 @@ import time
 import streamlit as st
 
 from dashboard.utils import (
-    check_load_tester_health,
+    check_analytics_service_health,
     get_load_test_scenarios,
     get_load_test_status,
     get_scenario_details,
@@ -14,7 +14,7 @@ from dashboard.utils import (
     start_simple_load_test,
     stop_load_test,
 )
-from load_tester.models.load_test import _get_all_amounts, _get_all_currency_pairs
+from analytics_service.models.load_test import _get_all_amounts, _get_all_currency_pairs
 
 
 def show_load_testing_page():
@@ -22,8 +22,8 @@ def show_load_testing_page():
     st.header("🔥 Load Testing Dashboard")
 
     # Check load tester health (only show if there's an issue)
-    load_tester_health = check_load_tester_health()
-    if not load_tester_health:
+    analytics_service_health = check_analytics_service_health()
+    if not analytics_service_health:
         st.error("❌ Load Tester service is not accessible")
         st.info("Make sure the Load Tester service is running at http://localhost:8001")
         return

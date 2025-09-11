@@ -5,7 +5,7 @@ import plotly.express as px
 import streamlit as st
 
 from dashboard.utils import (
-    check_load_tester_health,
+    check_analytics_service_health,
     get_load_test_report,
     get_load_test_status,
 )
@@ -16,8 +16,8 @@ def show_test_results_page():
     st.header("📊 Load Test Results & Analysis")
 
     # Check load tester health (only show if there's an issue)
-    load_tester_health = check_load_tester_health()
-    if not load_tester_health:
+    analytics_service_health = check_analytics_service_health()
+    if not analytics_service_health:
         st.error("❌ Load Tester service is not accessible")
         st.info("Make sure the Load Tester service is running at http://localhost:8001")
         return

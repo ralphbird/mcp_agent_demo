@@ -5,7 +5,7 @@ description = "Orchestration system for currency conversion services with dashbo
 authors = ["rbird <rbird@pagerduty.com>"]
 readme = "README.md"
 packages = [
-    { include = "load_tester" },
+    { include = "analytics_service" },
     { include = "common" }
 ]
 
@@ -21,7 +21,7 @@ streamlit = "^1.40.0"
 requests = "^2.32.0"
 plotly = "^5.24.0"
 pandas = "^2.2.0"
-# Load tester dependencies
+# Analytics service dependencies
 pyjwt = "^2.10.0"
 aiohttp = "^3.11.0"
 prometheus-client = "^0.21.0"
@@ -31,6 +31,7 @@ structlog = "^24.4.0"
 # OpenTelemetry (needed by common/logging_config.py)
 opentelemetry-api = "^1.26.0"
 opentelemetry-sdk = "^1.26.0"
+watchdog = "^6.0.0"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.12.11"
@@ -104,7 +105,7 @@ quote-style = "double"
 indent-style = "space"
 
 [tool.ruff.lint.isort]
-known-first-party = ["load_tester", "dashboard"]
+known-first-party = ["analytics_service", "dashboard"]
 
 [tool.ruff.lint.per-file-ignores]
 "**/tests/*" = ['S101'] # allow use of assert in tests
@@ -117,7 +118,7 @@ convention = "google"        # see python standards for discussion on docstyle
 ignore-var-parameters = true
 
 [tool.pyright]
-include = ["load_tester", "dashboard", "tests"]
+include = ["analytics_service", "dashboard", "tests"]
 exclude = ["**/node_modules", "**/__pycache__", ".venv"]
 pythonVersion = "3.12"
 typeCheckingMode = "basic"

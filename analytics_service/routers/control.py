@@ -298,6 +298,113 @@ async def get_scenario_report(scenario: LoadTestScenario) -> LoadTestReport:
         raise HTTPException(status_code=404, detail=f"Scenario '{scenario}' not found") from e
 
 
+@router.post("/burst-ramp")
+async def start_ramping_burst_test(
+    target_rps: float,
+    duration_seconds: int,
+    error_injection_enabled: bool = True,
+    error_injection_rate: float = 0.05,
+) -> LoadTestResponse:
+    """Start a ramping burst load test that gradually increases RPS over time.
+
+    The test starts at 10% of target RPS and ramps up in 10 equal steps over the
+    duration, reaching full target RPS by the end. Uses burst mode (single IP)
+    for realistic attack simulation.
+
+    Args:
+        target_rps: Peak requests per second to reach (1.0 to 2000.0)
+        duration_seconds: Total duration of the ramping burst test (30 to 1200 seconds)
+        error_injection_enabled: Enable error injection for realistic testing
+        error_injection_rate: Percentage of requests that should fail (0.0-0.5)
+
+    Returns:
+        Load test response with initial status and configuration
+
+    Raises:
+        HTTPException: If parameters are invalid or starting fails
+    """
+    import asyncio
+
+    # Validate parameters
+    if not (1.0 <= target_rps <= 2000.0):
+        raise HTTPException(status_code=422, detail="target_rps must be between 1.0 and 2000.0")
+
+    if not (30 <= duration_seconds <= 1200):
+        raise HTTPException(status_code=422, detail="duration_seconds must be between 30 and 1200")
+
+    if error_injection_enabled and not (0.0 <= error_injection_rate <= 0.5):
+        raise HTTPException(
+            status_code=422, detail="error_injection_rate must be between 0.0 and 0.5"
+        )
+
+    manager = LoadTestManager()
+
+    try:
+        # Start with 10% of target RPS in burst mode
+        initial_rps = target_rps * 0.1
+        initial_config = LoadTestConfig.create_full_config(
+            requests_per_second=initial_rps,
+            error_injection_enabled=error_injection_enabled,
+            error_injection_rate=error_injection_rate,
+            burst_mode=True,  # Enable single IP mode for burst simulation
+        )
+
+        # Start the initial load test
+        response = await manager.start_load_test(initial_config)
+
+        # Start ramping task in background
+        _ramping_task = asyncio.create_task(  # noqa: RUF006
+            _ramp_burst_test(
+                manager, target_rps, duration_seconds, error_injection_enabled, error_injection_rate
+            )
+        )
+
+        return response
+
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+async def _ramp_burst_test(
+    manager: LoadTestManager,
+    target_rps: float,
+    duration_seconds: int,
+    error_injection_enabled: bool,
+    error_injection_rate: float,
+) -> None:
+    """Internal function to handle ramping logic for burst tests."""
+    import asyncio
+
+    # Calculate ramping schedule: 10 steps over duration
+    steps = 10
+    step_duration = duration_seconds / steps
+
+    # Wait for initial step to stabilize
+    await asyncio.sleep(step_duration)
+
+    # Ramp through steps 2-10 (20% to 100% of target)
+    for step in range(2, steps + 1):
+        current_rps = target_rps * (step / steps)
+
+        # Create new config for this step
+        step_config = LoadTestConfig.create_full_config(
+            requests_per_second=current_rps,
+            error_injection_enabled=error_injection_enabled,
+            error_injection_rate=error_injection_rate,
+            burst_mode=True,  # Maintain single IP mode throughout
+        )
+
+        try:
+            # Ramp to new RPS level
+            await manager.ramp_to_config(step_config)
+        except RuntimeError:
+            # If ramping fails (e.g., test was stopped), exit gracefully
+            break
+
+        # Wait for next step
+        await asyncio.sleep(step_duration)
+
+
 # Global concurrent load test manager instance
 concurrent_manager = ConcurrentLoadTestManager()
 

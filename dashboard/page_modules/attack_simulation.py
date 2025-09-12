@@ -88,23 +88,23 @@ def show_attack_simulation_page():
                 start_load_test("baseline", baseline_rps, duration)
 
     with col2:
-        st.subheader("⚡ Burst Load Test")
-        st.markdown("Test with burst traffic patterns")
+        st.subheader("⚡ Ramping Burst Load Test")
+        st.markdown("Test with gradually increasing burst traffic (10 steps over duration)")
 
         burst_rps = st.slider(
             "Peak RPS",
             min_value=10,
             max_value=2000,
             value=100,
-            help="Peak request rate during bursts",
+            help="Peak request rate to reach by end of test. Starts at 10% and ramps up gradually.",
         )
 
         burst_duration = st.number_input(
             "Burst Duration (seconds)",
-            min_value=5,
+            min_value=30,
             max_value=1200,
             value=240,
-            help="Duration of each burst",
+            help="Total duration for ramping up to peak RPS (minimum 30s for effective ramping)",
         )
 
         if st.button("⚡ Start Burst Test", key="start_burst"):
@@ -123,8 +123,8 @@ def show_attack_simulation_page():
             stop_baseline_test()
 
     with col3:
-        if st.button("🔄 Refresh Status", key="refresh"):
-            st.rerun()
+        if st.button("🛑 Stop Burst", key="stop_burst"):
+            stop_burst_test()
 
     with col4:
         if st.button("📊 Get Report", key="get_report"):
@@ -164,167 +164,6 @@ def show_attack_simulation_page():
     elif not baseline_status:
         st.info("No active load tests")
 
-    # Performance metrics - combine stats from both tests
-    st.subheader("📈 Performance Summary (10-Second Rolling Average)")
-
-    # Calculate combined metrics
-    combined_stats = {}
-    if baseline_status and baseline_status.get("stats"):
-        combined_stats = baseline_status["stats"].copy()
-
-    if main_status and main_status.get("stats"):
-        main_stats = main_status["stats"]
-        if combined_stats:
-            # Add main test stats to baseline stats
-            combined_stats["total_requests"] += main_stats.get("total_requests", 0)
-            combined_stats["successful_requests"] += main_stats.get("successful_requests", 0)
-            combined_stats["failed_requests"] += main_stats.get("failed_requests", 0)
-            combined_stats["requests_per_second"] += main_stats.get("requests_per_second", 0)
-            # Average response time weighted by request count
-            if combined_stats["total_requests"] > 0:
-                total_baseline = (
-                    baseline_status["stats"].get("total_requests", 0) if baseline_status else 0
-                )
-                total_main = main_stats.get("total_requests", 0)
-                if total_baseline + total_main > 0:
-                    baseline_avg = (
-                        baseline_status["stats"].get("avg_response_time_ms", 0)
-                        if baseline_status
-                        else 0
-                    )
-                    main_avg = main_stats.get("avg_response_time_ms", 0)
-                    combined_stats["avg_response_time_ms"] = (
-                        baseline_avg * total_baseline + main_avg * total_main
-                    ) / (total_baseline + total_main)
-        else:
-            combined_stats = main_stats
-
-    if combined_stats:
-        # First row of metrics
-        col1, col2, col3, col4 = st.columns(4)
-
-        with col1:
-            st.metric("Total Requests", combined_stats.get("total_requests", 0))
-
-        with col2:
-            success_rate = 0
-            total = combined_stats.get("total_requests", 0)
-            successful = combined_stats.get("successful_requests", 0)
-            if total > 0:
-                success_rate = successful / total
-            st.metric("Success Rate", f"{success_rate:.1%}")
-
-        with col3:
-            st.metric("Avg Response", f"{combined_stats.get('avg_response_time_ms', 0):.1f}ms")
-
-        with col4:
-            st.metric("Combined RPS", f"{combined_stats.get('requests_per_second', 0):.1f}")
-
-        # Second row - RPS accuracy and latency compensation metrics
-        st.subheader("📈 RPS Accuracy & Latency Compensation")
-        col1, col2, col3, col4 = st.columns(4)
-
-        # Get accuracy metrics from main status (baseline may not have these metrics)
-        accuracy_stats = main_status.get("stats", {}) if main_status else {}
-
-        with col1:
-            target_rps = accuracy_stats.get("target_requests_per_second", 0)
-            achieved_accuracy = accuracy_stats.get("achieved_rps_accuracy", 0)
-
-            st.metric(
-                "RPS Accuracy",
-                f"{achieved_accuracy:.1f}%",
-                delta=f"Target: {target_rps:.1f} RPS",
-            )
-
-            if achieved_accuracy < 85:
-                st.error("⚠️ RPS accuracy below 85% threshold")
-
-        with col2:
-            compensation_active = accuracy_stats.get("latency_compensation_active", False)
-            avg_compensation = accuracy_stats.get("avg_compensation_ms", 0)
-
-            status_text = "✅ Active" if compensation_active else "❌ Disabled"
-            st.metric("Latency Compensation", status_text)
-            if compensation_active and avg_compensation > 0:
-                st.caption(f"Avg compensation: {avg_compensation:.1f}ms")
-
-        with col3:
-            adaptive_scaling = accuracy_stats.get("adaptive_scaling_active", False)
-            current_workers = accuracy_stats.get("current_worker_count", 0)
-            base_workers = accuracy_stats.get("base_worker_count", 0)
-
-            scaling_text = "🔄 Scaled" if adaptive_scaling else "📊 Base"
-            st.metric("Worker Scaling", scaling_text)
-            st.caption(f"Workers: {current_workers} (base: {base_workers})")
-
-        with col4:
-            rolling_rps = combined_stats.get("rolling_requests_per_second", 0)
-            st.metric("Rolling RPS (10s)", f"{rolling_rps:.1f}")
-
-            # Show accuracy alert if using rolling RPS
-            if target_rps > 0:
-                rolling_accuracy = (rolling_rps / target_rps) * 100
-                if rolling_accuracy < 85:
-                    st.warning(f"📉 Rolling accuracy: {rolling_accuracy:.1f}%")
-
-        # Latency compensation insights and recommendations
-        if accuracy_stats and target_rps > 0:
-            st.subheader("💡 Performance Insights")
-
-            insights_col1, insights_col2 = st.columns(2)
-
-            with insights_col1:
-                st.write("**Latency Compensation Impact:**")
-
-                if compensation_active:
-                    if avg_compensation > 100:
-                        st.info(
-                            f"🔧 High compensation ({avg_compensation:.1f}ms) - requests are slower than target intervals"
-                        )
-                    elif avg_compensation > 50:
-                        st.success(
-                            f"⚡ Moderate compensation ({avg_compensation:.1f}ms) - system is adapting well"
-                        )
-                    elif avg_compensation > 0:
-                        st.success(
-                            f"✨ Low compensation ({avg_compensation:.1f}ms) - excellent response times"
-                        )
-                    else:
-                        st.info("📊 No compensation needed - response times are very fast")
-                else:
-                    st.warning(
-                        "🚫 Latency compensation disabled - RPS may be inaccurate under load"
-                    )
-
-            with insights_col2:
-                st.write("**Adaptive Scaling Status:**")
-
-                if adaptive_scaling:
-                    extra_workers = current_workers - base_workers
-                    st.info(
-                        f"🔄 System scaled up with {extra_workers} additional workers due to high latency"
-                    )
-                    st.caption("This helps maintain target RPS despite slower response times")
-                else:
-                    if current_workers == base_workers:
-                        st.success("📊 Running at optimal worker count for current RPS")
-                    else:
-                        st.info(f"📈 Using {current_workers} workers (base: {base_workers})")
-
-            # Performance recommendations
-            if achieved_accuracy < 85:
-                st.error("**🎯 Performance Recommendations:**")
-                if not compensation_active:
-                    st.write("• Enable latency compensation for more accurate RPS")
-                if avg_compensation > 200:
-                    st.write("• Consider reducing target RPS or optimizing the target API")
-                if not adaptive_scaling and current_workers == base_workers:
-                    st.write("• Enable adaptive scaling to handle high latency periods")
-
-            elif achieved_accuracy >= 95:
-                st.success("**✅ Excellent Performance:** Target RPS is being achieved accurately!")
-
     # Auto-refresh for countdown timer
     if "auto_stop_timer" in st.session_state and st.session_state.auto_stop_timer:
         time.sleep(1)  # Small delay before refresh
@@ -349,6 +188,30 @@ def start_continuous_baseline(rps: float) -> None:
 
         if response.status_code == 200:
             st.success("✅ Continuous baseline load test started successfully!")
+        elif response.status_code == 409:  # Conflict - baseline already running
+            # Stop existing baseline test and start new one
+            st.info("🔄 Stopping existing baseline test and starting new one...")
+
+            # Stop the existing baseline test
+            stop_response = requests.post(
+                f"{ANALYTICS_SERVICE_URL}/api/load-test/concurrent/baseline/stop",
+                timeout=10,
+            )
+
+            if stop_response.status_code == 200:
+                # Try starting the new baseline test
+                retry_response = requests.post(
+                    f"{ANALYTICS_SERVICE_URL}/api/load-test/concurrent/baseline/start",
+                    json={"config": config},
+                    timeout=10,
+                )
+
+                if retry_response.status_code == 200:
+                    st.success("✅ Baseline test restarted with new configuration!")
+                else:
+                    st.error(f"❌ Failed to restart baseline test: {retry_response.text}")
+            else:
+                st.error(f"❌ Failed to stop existing baseline test: {stop_response.text}")
         else:
             st.error(f"❌ Failed to start baseline test: {response.text}")
 
@@ -359,22 +222,40 @@ def start_continuous_baseline(rps: float) -> None:
 def start_load_test(test_type: str, rps: float, duration: int) -> None:
     """Start a load test with the specified parameters."""
     try:
-        # Use minimal config - let the API populate all currency pairs and amounts automatically
-        config = {
-            "requests_per_second": rps,
-            "error_injection_enabled": test_type == "burst",
-            "error_injection_rate": 0.05 if test_type == "burst" else 0.01,
-            "burst_mode": test_type == "burst",  # Enable single IP mode for burst tests
-        }
+        if test_type == "burst":
+            # Use ramping burst test for gradual load increase
+            params = {
+                "target_rps": rps,
+                "duration_seconds": duration,
+                "error_injection_enabled": True,
+                "error_injection_rate": 0.05,
+            }
 
-        response = requests.post(
-            f"{ANALYTICS_SERVICE_URL}/api/load-test/start", json={"config": config}, timeout=10
-        )
+            response = requests.post(
+                f"{ANALYTICS_SERVICE_URL}/api/load-test/burst-ramp", params=params, timeout=10
+            )
+        else:
+            # Use regular load test for baseline
+            config = {
+                "requests_per_second": rps,
+                "error_injection_enabled": False,
+                "error_injection_rate": 0.01,
+                "burst_mode": False,
+            }
+
+            response = requests.post(
+                f"{ANALYTICS_SERVICE_URL}/api/load-test/start", json={"config": config}, timeout=10
+            )
 
         if response.status_code == 200:
-            st.success(
-                f"✅ {test_type.title()} load test started successfully! Will run for {duration} seconds."
-            )
+            if test_type == "burst":
+                st.success(
+                    f"✅ Ramping burst test started! Will gradually increase from {rps * 0.1:.1f} to {rps} RPS over {duration} seconds."
+                )
+            else:
+                st.success(
+                    f"✅ {test_type.title()} load test started successfully! Will run for {duration} seconds."
+                )
 
             # Schedule automatic stop after duration
             if "auto_stop_timer" not in st.session_state:
@@ -385,8 +266,54 @@ def start_load_test(test_type: str, rps: float, duration: int) -> None:
                 "duration": duration,
                 "test_type": test_type,
             }
+
+        elif (
+            response.status_code == 409 or response.status_code == 500
+        ):  # Conflict or error - test already running
+            # Stop existing test and start new one
+            st.info("🔄 Stopping existing test and starting new one...")
+
+            # Stop any existing test
+            stop_response = requests.post(f"{ANALYTICS_SERVICE_URL}/api/load-test/stop", timeout=10)
+
+            if stop_response.status_code == 200:
+                # Try starting the new test
+                if test_type == "burst":
+                    retry_response = requests.post(
+                        f"{ANALYTICS_SERVICE_URL}/api/load-test/burst-ramp",
+                        params=params,
+                        timeout=10,
+                    )
+                else:
+                    retry_response = requests.post(
+                        f"{ANALYTICS_SERVICE_URL}/api/load-test/start",
+                        json={"config": config},
+                        timeout=10,
+                    )
+
+                if retry_response.status_code == 200:
+                    if test_type == "burst":
+                        st.success(
+                            f"✅ Burst test restarted! Will gradually increase from {rps * 0.1:.1f} to {rps} RPS over {duration} seconds."
+                        )
+                    else:
+                        st.success(f"✅ {test_type.title()} test restarted with new configuration!")
+
+                    # Schedule automatic stop after duration for restarted test
+                    if "auto_stop_timer" not in st.session_state:
+                        st.session_state.auto_stop_timer = {}
+
+                    st.session_state.auto_stop_timer[test_type] = {
+                        "start_time": time.time(),
+                        "duration": duration,
+                        "test_type": test_type,
+                    }
+                else:
+                    st.error(f"❌ Failed to restart {test_type} test: {retry_response.text}")
+            else:
+                st.error(f"❌ Failed to stop existing test: {stop_response.text}")
         else:
-            st.error(f"❌ Failed to start load test: {response.text}")
+            st.error(f"❌ Failed to start {test_type} test: {response.text}")
 
     except Exception as e:
         st.error(f"❌ Error starting load test: {e!s}")
@@ -406,6 +333,27 @@ def stop_baseline_test() -> None:
 
     except Exception as e:
         st.error(f"❌ Error stopping baseline test: {e!s}")
+
+
+def stop_burst_test() -> None:
+    """Stop the current burst/main load test."""
+    try:
+        response = requests.post(f"{ANALYTICS_SERVICE_URL}/api/load-test/stop", timeout=10)
+
+        if response.status_code == 200:
+            st.success("✅ Burst load test stopped successfully!")
+
+            # Clear any auto-stop timers for burst test
+            if (
+                "auto_stop_timer" in st.session_state
+                and "burst" in st.session_state.auto_stop_timer
+            ):
+                del st.session_state.auto_stop_timer["burst"]
+        else:
+            st.error(f"❌ Failed to stop burst test: {response.text}")
+
+    except Exception as e:
+        st.error(f"❌ Error stopping burst test: {e!s}")
 
 
 def stop_all_tests() -> None:
@@ -480,14 +428,13 @@ def show_test_report() -> None:
 
 
 def display_status_table(status_data: dict[str, Any], test_name: str = "Test") -> None:
-    """Display the status of load tests in a table format."""
+    """Display simplified status of load tests."""
     if not status_data:
         return
 
     # Display current test status
     status = status_data.get("status", "unknown")
     config = status_data.get("config", {})
-    stats = status_data.get("stats", {})
 
     # Status indicator
     status_color = "🟢" if status == "running" else "🔴" if status == "stopped" else "🟡"
@@ -495,18 +442,3 @@ def display_status_table(status_data: dict[str, Any], test_name: str = "Test") -
 
     if config:
         st.write(f"**Configuration**: {config.get('requests_per_second', 0)} RPS")
-
-    if stats:
-        col1, col2 = st.columns(2)
-
-        with col1:
-            st.write("**Statistics:**")
-            st.write(f"- Total Requests: {stats.get('total_requests', 0)}")
-            st.write(f"- Successful: {stats.get('successful_requests', 0)}")
-            st.write(f"- Failed: {stats.get('failed_requests', 0)}")
-
-        with col2:
-            st.write("**Performance:**")
-            st.write(f"- Avg Response: {stats.get('avg_response_time_ms', 0):.1f}ms")
-            st.write(f"- Min Response: {stats.get('min_response_time_ms', 0):.1f}ms")
-            st.write(f"- Max Response: {stats.get('max_response_time_ms', 0):.1f}ms")

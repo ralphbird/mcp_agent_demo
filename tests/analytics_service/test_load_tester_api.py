@@ -413,3 +413,61 @@ class TestLoadTesterEndpoints:
         assert config["error_injection_enabled"] is False
         # Rate should still be stored even if disabled
         assert config["error_injection_rate"] == 0.25
+
+    def test_start_ramping_burst_test(self, client):
+        """Test starting ramping burst load test."""
+        response = client.post(
+            "/api/load-test/burst-ramp?target_rps=50.0&duration_seconds=60&error_injection_enabled=true&error_injection_rate=0.1"
+        )
+        assert response.status_code == 200
+
+        data = response.json()
+        assert data["status"] == LoadTestStatus.RUNNING
+        config = data["config"]
+
+        # Should start at 10% of target RPS
+        assert config["requests_per_second"] == 5.0  # 50.0 * 0.1
+        assert config["burst_mode"] is True
+        assert config["error_injection_enabled"] is True
+        assert config["error_injection_rate"] == 0.1
+
+    def test_start_ramping_burst_test_invalid_rps(self, client):
+        """Test ramping burst test rejects invalid RPS values."""
+        # Test RPS too low
+        response = client.post("/api/load-test/burst-ramp?target_rps=0.5&duration_seconds=60")
+        assert response.status_code == 422
+        error_detail = response.json()["detail"]
+        assert "target_rps must be between 1.0 and 2000.0" in error_detail
+
+        # Test RPS too high
+        response = client.post("/api/load-test/burst-ramp?target_rps=2500.0&duration_seconds=60")
+        assert response.status_code == 422
+        error_detail = response.json()["detail"]
+        assert "target_rps must be between 1.0 and 2000.0" in error_detail
+
+    def test_start_ramping_burst_test_invalid_duration(self, client):
+        """Test ramping burst test rejects invalid duration values."""
+        # Test duration too short
+        response = client.post("/api/load-test/burst-ramp?target_rps=100.0&duration_seconds=20")
+        assert response.status_code == 422
+        error_detail = response.json()["detail"]
+        assert "duration_seconds must be between 30 and 1200" in error_detail
+
+        # Test duration too long
+        response = client.post("/api/load-test/burst-ramp?target_rps=100.0&duration_seconds=1500")
+        assert response.status_code == 422
+        error_detail = response.json()["detail"]
+        assert "duration_seconds must be between 30 and 1200" in error_detail
+
+    def test_start_ramping_burst_test_defaults(self, client):
+        """Test ramping burst test uses correct default values."""
+        response = client.post("/api/load-test/burst-ramp?target_rps=100.0&duration_seconds=60")
+        assert response.status_code == 200
+
+        data = response.json()
+        config = data["config"]
+
+        # Should use default error injection settings
+        assert config["error_injection_enabled"] is True  # Default for burst
+        assert config["error_injection_rate"] == 0.05  # Default rate
+        assert config["burst_mode"] is True  # Always enabled for burst

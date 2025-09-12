@@ -1,15 +1,16 @@
-# Load Tester and Dashboard System
+# Analytics Service and Dashboard System
 
 A comprehensive load testing and dashboard system for external currency conversion APIs.
-This system provides powerful load testing capabilities and analytics for currency services
-running on external endpoints.
+This system provides powerful load testing capabilities with advanced attack simulation
+for currency services running on external endpoints.
 
 ## ✨ What This System Provides
 
-📊 **Interactive Web Dashboard**: Streamlit-based interface for load testing and analytics
-🔥 **Load Testing Platform**: Built-in load testing service with configurable scenarios
-📈 **Performance Analytics**: Real-time metrics and performance visualization
+📊 **Interactive Web Dashboard**: Streamlit-based interface for load testing and attack simulation
+🔥 **Load Testing Platform**: Built-in analytics service with configurable scenarios
+⚡ **Advanced Burst Testing**: Ramping burst tests with single IP simulation for realistic DDoS patterns
 🎯 **External API Testing**: Test any currency conversion API running on localhost:8000
+🛡️ **IP Spoofing**: Sophisticated IP address rotation and single-source attack simulation
 
 ## 🚀 Quick Start (Docker - Recommended)
 
@@ -30,15 +31,15 @@ This will start the load testing services:
 ```text
 🚀 Available at:
    📊 Dashboard: http://localhost:8501
-   🔥 Load Tester: http://localhost:8001
+   🔥 Analytics Service: http://localhost:8001
 ```
 
 ### 🎯 What You Get Out of the Box
 
-- **Load Testing Dashboard** at <http://localhost:8501> for testing and analytics
-- **Load Tester API** at <http://localhost:8001> with interactive docs at `/docs`
-- **File-based Logging** for load tester operations
-- **Configurable Test Scenarios** with real-time performance monitoring
+- **Attack Simulation Dashboard** at <http://localhost:8501> for load testing and DDoS simulation
+- **Analytics Service API** at <http://localhost:8001> with interactive docs at `/docs`
+- **File-based Logging** for analytics service operations
+- **Advanced Test Scenarios** with ramping burst tests and IP spoofing
 
 ### 🐳 Docker Commands
 
@@ -52,28 +53,32 @@ make clean                     # Clean all Docker resources
 
 ## 🚀 Core Features
 
-### Load Testing Service
+### Analytics Service
 
 - **Performance Testing**: Configurable load tests for external API endpoints
+- **Ramping Burst Tests**: Gradual load increase in 10 steps for realistic attack simulation
+- **IP Spoofing**: Sophisticated IP address generation from real ISP ranges (US, EU, APAC)
+- **Burst Mode**: Single IP attack simulation for authentic DDoS pattern testing
 - **Real-Time Monitoring**: Live statistics during test execution
 - **Custom Scenarios**: Adjustable request rates, currency pairs, and test duration
-- **Results Tracking**: Detailed performance metrics and response time analysis
-- **File Logging**: All operations logged to files for analysis
+- **Error Injection**: Configurable error rates for resilience testing
 - **JWT Authentication**: Support for authenticated API testing
+- **File Logging**: All operations logged to files for analysis
 
 ### Interactive Dashboard
 
-- **Load Test Control**: Start, stop, and monitor load tests
-- **Performance Analytics**: Real-time metrics and response time visualization
-- **Test Results**: Comprehensive test reports and failure analysis
-- **Configuration Management**: Easy setup of test scenarios and parameters
+- **Attack Simulation Control**: Start baseline and burst tests with simplified interface
+- **Automatic Restart**: Change configurations and restart tests seamlessly
+- **Test Status Monitoring**: Clear status indicators for baseline and burst tests
+- **Focused Controls**: Essential buttons only - start, stop baseline, stop burst, get reports
+- **Auto-stop Timers**: Countdown timers for timed test execution
 
 ### External API Testing
 
 - **Currency Conversion Testing**: Automated testing of currency conversion endpoints
 - **Rate Lookup Testing**: Performance testing of exchange rate retrieval
 - **Multi-scenario Testing**: Support for different testing patterns and load profiles
-- **Error Injection**: Configurable error rates for resilience testing
+- **Baseline + Burst Testing**: Concurrent baseline traffic with attack simulation
 
 ## 🛠️ Local Development
 
@@ -90,8 +95,8 @@ If you prefer to run without Docker:
 # Install dependencies
 poetry install
 
-# Run the load tester API
-poetry run python -m load_tester.main
+# Run the analytics service API
+poetry run python -m analytics_service.main
 
 # In another terminal, run the dashboard
 poetry run streamlit run dashboard/app.py
@@ -99,24 +104,28 @@ poetry run streamlit run dashboard/app.py
 
 The services will be available at:
 
-- **Load Tester API**: <http://localhost:8001>
+- **Analytics Service API**: <http://localhost:8001>
 - **Dashboard**: <http://localhost:8501>
 
 ## 🧪 Quick Test & Verification
 
-Once your services are running, you can test the load tester:
+Once your services are running, you can test the analytics service:
 
 ```bash
-# Check load tester health
+# Check analytics service health
 curl http://localhost:8001/
 
-# Start a load test
+# Start a ramping burst test (gradually increases from 10% to 100% of target RPS)
+curl -X POST "http://localhost:8001/api/load-test/burst-ramp?target_rps=100&duration_seconds=180"
+
+# Start a simple load test
 curl -X POST "http://localhost:8001/api/load-test/start" \
   -H "Content-Type: application/json" \
   -d '{
-    "requests_per_second": 10,
-    "duration_seconds": 60,
-    "currency_pairs": [["USD", "EUR"], ["GBP", "USD"]]
+    "config": {
+      "requests_per_second": 10,
+      "burst_mode": false
+    }
   }'
 
 # Check load test status
@@ -161,10 +170,13 @@ poetry run pyright
 ### Load Testing Endpoints
 
 - `POST /api/load-test/start` - Start a new load test
+- `POST /api/load-test/burst-ramp` - Start a ramping burst test with gradual RPS increase
 - `POST /api/load-test/stop` - Stop the current load test
 - `GET /api/load-test/status` - Get current load test status
 - `GET /api/load-test/report` - Get load test results
 - `GET /api/load-test/scenarios` - List available test scenarios
+- `POST /api/load-test/concurrent/{test_id}/start` - Start concurrent baseline tests
+- `POST /api/load-test/concurrent/{test_id}/stop` - Stop specific concurrent tests
 - `GET /` - API information and available endpoints
 
 ### Example API Usage
@@ -174,10 +186,12 @@ poetry run pyright
 ```json
 POST /api/load-test/start
 {
-  "requests_per_second": 50,
-  "duration_seconds": 300,
-  "currency_pairs": [["USD", "EUR"], ["GBP", "JPY"]],
-  "amounts": [100, 500, 1000]
+  "config": {
+    "requests_per_second": 50,
+    "error_injection_enabled": true,
+    "error_injection_rate": 0.05,
+    "burst_mode": false
+  }
 }
 
 Response:
@@ -185,7 +199,8 @@ Response:
   "status": "running",
   "config": {
     "requests_per_second": 50,
-    "duration_seconds": 300
+    "burst_mode": false,
+    "error_injection_enabled": true
   },
   "stats": {
     "total_requests": 0,
@@ -195,15 +210,33 @@ Response:
 }
 ```
 
+**Start Ramping Burst Test:**
+
+```bash
+POST /api/load-test/burst-ramp?target_rps=200&duration_seconds=300&error_injection_enabled=true
+
+Response:
+{
+  "status": "running",
+  "config": {
+    "requests_per_second": 20.0,  // Starts at 10% of target
+    "burst_mode": true,
+    "error_injection_enabled": true
+  }
+}
+```
+
 ## 📁 Project Structure
 
 ```text
 mcp_agent_demo/
-├── load_tester/               # Load testing service
-├── dashboard/                 # Streamlit web dashboard
+├── analytics_service/         # Analytics and load testing service
+├── dashboard/                 # Streamlit web dashboard with attack simulation
+├── tests/                     # Comprehensive test suite
 ├── docker-compose.yml         # Docker orchestration
 ├── Dockerfile                 # Multi-stage Docker build
 ├── Makefile                   # Development commands
+├── CLAUDE.md                  # Developer guidance
 └── README.md                  # This documentation
 ```
 
@@ -216,7 +249,7 @@ The project includes comprehensive tests:
 make test
 
 # Run specific test modules
-poetry run pytest tests/load_tester/ -v         # Load testing tests
+poetry run pytest tests/analytics_service/ -v   # Analytics service tests
 poetry run pytest tests/dashboard/ -v           # Dashboard tests
 ```
 

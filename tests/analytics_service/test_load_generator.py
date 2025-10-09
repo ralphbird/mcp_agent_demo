@@ -1,5 +1,6 @@
 """Unit tests for LoadGenerator service."""
 
+import asyncio
 import time
 from contextlib import suppress
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -268,16 +269,18 @@ class TestWorkerConfiguration:
 
     def test_calculate_worker_config_high_rps(self, load_generator):
         """Test worker config for high RPS values."""
-        # High RPS should use multiple workers but limited
+        # High RPS should use multiple workers with new scaling logic
         num_workers, interval = load_generator._calculate_worker_config(20.0)
-        expected_workers = min(int(20.0 / 2), 10)  # min(10, 10) = 10
+        # For RPS <= 50: min(int(rps/2), 25)
+        expected_workers = min(int(20.0 / 2), 25)  # min(10, 25) = 10
         assert num_workers == expected_workers
         assert interval == expected_workers / 20.0
 
         num_workers, interval = load_generator._calculate_worker_config(100.0)
-        expected_workers = min(int(100.0 / 2), 10)  # min(50, 10) = 10
-        assert num_workers == 10  # Capped at 10
-        assert interval == 10 / 100.0  # 0.1
+        # For RPS > 50: min(int(rps/4), 100)
+        expected_workers = min(int(100.0 / 4), 100)  # min(25, 100) = 25
+        assert num_workers == expected_workers  # 25 workers for high RPS
+        assert interval == expected_workers / 100.0  # 0.25
 
     def test_calculate_worker_config_boundary(self, load_generator):
         """Test worker config at boundary values."""
@@ -613,9 +616,9 @@ class TestRPSDistribution:
             (1.0, 1),  # Low RPS -> 1 worker
             (5.0, 1),  # Low RPS -> 1 worker
             (10.0, 1),  # Boundary -> 1 worker
-            (15.0, 7),  # Medium RPS -> min(15/2, 10) = 7 workers
-            (20.0, 10),  # High RPS -> min(20/2, 10) = 10 workers
-            (100.0, 10),  # Very high RPS -> capped at 10 workers
+            (15.0, 7),  # Medium RPS -> min(15/2, 25) = 7 workers
+            (20.0, 10),  # High RPS -> min(20/2, 25) = 10 workers
+            (100.0, 25),  # Very high RPS -> min(100/4, 100) = 25 workers
         ]
 
         for target_rps, expected_workers in test_scenarios:
@@ -1346,3 +1349,272 @@ class TestIPSpoofingIntegration:
         assert (
             enabled_time < disabled_time * 10.0 or enabled_time < 0.01
         )  # Less than 10ms is acceptable
+
+
+class TestTrafficVariability:
+    """Test traffic variability functionality for realistic baseline patterns."""
+
+    @pytest.fixture
+    def variability_config(self):
+        """Load test config for variability tests."""
+        return LoadTestConfig(requests_per_second=10.0)
+
+    @pytest.fixture
+    def mock_settings_variability_enabled(self, monkeypatch):
+        """Mock settings with traffic variability enabled."""
+        mock_settings = MagicMock()
+        mock_settings.traffic_variability_enabled = True
+        mock_settings.jitter_percentage = 0.15
+        mock_settings.burst_probability = 0.05
+        mock_settings.burst_multiplier = 2.0
+        mock_settings.burst_duration_ms = 200.0
+        mock_settings.baseline_fluctuation_amplitude = 0.1
+        mock_settings.baseline_fluctuation_period_seconds = 30.0
+        mock_settings.min_sleep_threshold_ms = 1.0
+        mock_settings.ip_spoofing_enabled = False
+        mock_settings.latency_compensation_enabled = False
+        mock_settings.adaptive_scaling_enabled = False
+
+        monkeypatch.setattr("analytics_service.services.load_generator.settings", mock_settings)
+        return mock_settings
+
+    @pytest.fixture
+    def mock_settings_variability_disabled(self, monkeypatch):
+        """Mock settings with traffic variability disabled."""
+        mock_settings = MagicMock()
+        mock_settings.traffic_variability_enabled = False
+        mock_settings.min_sleep_threshold_ms = 1.0
+        mock_settings.ip_spoofing_enabled = False
+        mock_settings.latency_compensation_enabled = False
+        mock_settings.adaptive_scaling_enabled = False
+
+        monkeypatch.setattr("analytics_service.services.load_generator.settings", mock_settings)
+        return mock_settings
+
+    def test_get_variable_rps_disabled(
+        self, variability_config, mock_settings_variability_disabled
+    ):
+        """Test that variable RPS returns base RPS when variability is disabled."""
+        generator = LoadGenerator(variability_config)
+        base_rps = 10.0
+
+        variable_rps = generator._get_variable_rps(base_rps)
+        assert variable_rps == base_rps
+
+    def test_apply_jitter_disabled(self, variability_config, mock_settings_variability_disabled):
+        """Test that jitter returns base interval when variability is disabled."""
+        generator = LoadGenerator(variability_config)
+        base_interval = 0.1  # 100ms
+
+        jittered_interval = generator._apply_jitter_to_interval(base_interval)
+        assert jittered_interval == base_interval
+
+    def test_baseline_fluctuations(self, variability_config, mock_settings_variability_enabled):
+        """Test baseline fluctuations over time."""
+        generator = LoadGenerator(variability_config)
+        base_rps = 10.0
+
+        # Test different time points in the fluctuation cycle
+        original_start_time = generator._test_start_time
+
+        # At start (t=0), fluctuation should be at phase 0
+        generator._test_start_time = generator._test_start_time  # Current time
+        variable_rps_start = generator._get_variable_rps(base_rps)
+
+        # At quarter period (t=7.5s), fluctuation should be at peak
+        generator._test_start_time = original_start_time - 7.5
+        variable_rps_quarter = generator._get_variable_rps(base_rps)
+
+        # At half period (t=15s), fluctuation should be back to baseline
+        generator._test_start_time = original_start_time - 15.0
+        variable_rps_half = generator._get_variable_rps(base_rps)
+
+        # Check that we get different values (fluctuation is working)
+        # Note: exact values depend on sine wave position, but they should vary
+        assert (
+            variable_rps_start != variable_rps_quarter or variable_rps_quarter != variable_rps_half
+        )
+
+        # All values should be within reasonable bounds
+        min_expected = base_rps * (1.0 - 0.1)  # 9.0 RPS minimum
+        max_expected = base_rps * (1.0 + 0.1)  # 11.0 RPS maximum
+
+        for rps in [variable_rps_start, variable_rps_quarter, variable_rps_half]:
+            assert min_expected <= rps <= max_expected
+
+    def test_micro_bursts_probability(self, variability_config, mock_settings_variability_enabled):
+        """Test micro-burst probability and timing."""
+        generator = LoadGenerator(variability_config)
+        base_rps = 10.0
+
+        # Test many calls to see if bursts occur with expected probability
+        burst_events = 0
+        total_calls = 1000
+        last_in_burst = False
+
+        # Reset burst state
+        generator._in_burst = False
+        generator._burst_end_time = 0.0
+
+        for _ in range(total_calls):
+            # Force different random seeds by advancing time slightly
+            import time
+
+            time.sleep(0.001)
+
+            variable_rps = generator._get_variable_rps(base_rps)
+
+            # Count burst events (transitions from non-burst to burst)
+            current_in_burst = variable_rps > base_rps * 1.5  # Detect burst (> 1.5x base rate)
+            if current_in_burst and not last_in_burst:
+                burst_events += 1
+            last_in_burst = current_in_burst
+
+        # With 5% probability per call, but bursts last 200ms and we have 1ms sleep between calls,
+        # so during a burst (~200 calls), no new bursts can start.
+        # Expect significantly fewer burst events than raw probability would suggest.
+        # With 1000 calls and ~200ms bursts, we might get 3-15 burst events.
+        assert 1 <= burst_events <= 25, f"Expected 1-25 burst events, got {burst_events}"
+
+    def test_micro_burst_duration(self, variability_config, mock_settings_variability_enabled):
+        """Test that micro-bursts last for the configured duration."""
+        generator = LoadGenerator(variability_config)
+        base_rps = 10.0
+
+        # Force a burst to start
+        generator._in_burst = True
+        generator._burst_end_time = time.time() + 0.2  # 200ms burst
+
+        # During burst, should get multiplied RPS
+        variable_rps_during = generator._get_variable_rps(base_rps)
+        assert variable_rps_during == base_rps * 2.0  # burst_multiplier
+
+        # Simulate time passing (burst should end)
+        generator._burst_end_time = time.time() - 0.1  # Burst ended 100ms ago
+
+        # After burst, should return to normal fluctuations
+        variable_rps_after = generator._get_variable_rps(base_rps)
+        assert variable_rps_after != variable_rps_during
+
+    def test_jitter_application(self, variability_config, mock_settings_variability_enabled):
+        """Test jitter application to intervals."""
+        generator = LoadGenerator(variability_config)
+        base_interval = 0.1  # 100ms
+
+        # Test multiple jitter applications
+        jittered_values = []
+        for _ in range(100):
+            jittered = generator._apply_jitter_to_interval(base_interval)
+            jittered_values.append(jittered)
+
+        # Should get variety in jittered values
+        assert len(set(jittered_values)) > 50  # At least 50 different values
+
+        # All values should be within jitter range (±15% of base)
+        min_expected = base_interval * (1.0 - 0.15)
+        max_expected = base_interval * (1.0 + 0.15)
+
+        for jittered in jittered_values:
+            assert jittered >= 0.001  # Should respect minimum sleep threshold
+            assert min_expected <= jittered <= max_expected or jittered == 0.001
+
+    def test_jitter_respects_minimum_threshold(
+        self, variability_config, mock_settings_variability_enabled
+    ):
+        """Test that jitter respects minimum sleep threshold."""
+        generator = LoadGenerator(variability_config)
+
+        # Use very small base interval that would go negative with jitter
+        small_interval = 0.0005  # 0.5ms
+
+        jittered = generator._apply_jitter_to_interval(small_interval)
+
+        # Should be at least the minimum threshold (1ms = 0.001s)
+        assert jittered >= 0.001
+
+    def test_variability_state_reset_on_start(
+        self, variability_config, mock_settings_variability_enabled
+    ):
+        """Test that variability state is reset when load generator starts."""
+        generator = LoadGenerator(variability_config)
+
+        # Set some initial state
+        generator._in_burst = True
+        generator._burst_end_time = time.time() + 100.0  # Far future
+
+        # Mock aiohttp.ClientSession to avoid actual HTTP
+        with patch("aiohttp.ClientSession") as mock_session_class:
+            mock_session = AsyncMock()
+            mock_session_class.return_value = mock_session
+
+            # Start should reset variability state
+            initial_start_time = generator._test_start_time
+            asyncio.run(generator.start())
+
+            # State should be reset
+            assert generator._in_burst is False
+            assert generator._burst_end_time == 0.0
+            assert generator._test_start_time > initial_start_time
+
+            # Cleanup
+            asyncio.run(generator.stop())
+
+    @pytest.mark.asyncio
+    async def test_variability_integration_in_worker(
+        self, variability_config, mock_settings_variability_enabled
+    ):
+        """Test that variability is integrated into the worker loop."""
+        generator = LoadGenerator(variability_config)
+
+        # Mock the execute_single_request to avoid actual HTTP calls
+        async def mock_execute():
+            return LoadGenerationResult(success=True, response_time_ms=50.0), {}
+
+        with (
+            patch.object(generator, "_execute_single_request", side_effect=mock_execute),
+            patch("aiohttp.ClientSession") as mock_session_class,
+        ):
+            mock_session = AsyncMock()
+            mock_session_class.return_value = mock_session
+
+            await generator.start()
+
+            # Let it run for a short time to test variability
+            await asyncio.sleep(0.1)
+
+            # Stop and get stats
+            stats = await generator.stop()
+
+            # Should have made some requests with variability applied
+            assert stats.total_requests > 0
+
+    def test_configuration_validation_ranges(self):
+        """Test that variability configuration values are within expected ranges."""
+        from analytics_service.config import LoadTesterSettings
+
+        # Test valid configuration
+        valid_config = LoadTesterSettings(
+            traffic_variability_enabled=True,
+            jitter_percentage=0.15,
+            burst_probability=0.05,
+            burst_multiplier=2.0,
+            burst_duration_ms=200.0,
+            baseline_fluctuation_amplitude=0.1,
+            baseline_fluctuation_period_seconds=30.0,
+        )
+
+        assert valid_config.jitter_percentage == 0.15
+        assert valid_config.burst_probability == 0.05
+
+        # Test boundary validation
+        with pytest.raises(ValueError, match="Jitter percentage must be between"):
+            LoadTesterSettings(jitter_percentage=0.6)  # Too high
+
+        with pytest.raises(ValueError, match="Burst probability must be between"):
+            LoadTesterSettings(burst_probability=0.3)  # Too high
+
+        with pytest.raises(ValueError, match="Burst multiplier must be between"):
+            LoadTesterSettings(burst_multiplier=15.0)  # Too high
+
+        with pytest.raises(ValueError, match="Baseline fluctuation amplitude must be between"):
+            LoadTesterSettings(baseline_fluctuation_amplitude=0.4)  # Too high

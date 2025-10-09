@@ -448,16 +448,16 @@ class TestLoadTesterEndpoints:
     def test_start_ramping_burst_test_invalid_duration(self, client):
         """Test ramping burst test rejects invalid duration values."""
         # Test duration too short
-        response = client.post("/api/load-test/burst-ramp?target_rps=100.0&duration_seconds=20")
+        response = client.post("/api/load-test/burst-ramp?target_rps=100.0&duration_seconds=5")
         assert response.status_code == 422
         error_detail = response.json()["detail"]
-        assert "duration_seconds must be between 30 and 1200" in error_detail
+        assert "duration_seconds must be between 10 and 1200" in error_detail
 
         # Test duration too long
         response = client.post("/api/load-test/burst-ramp?target_rps=100.0&duration_seconds=1500")
         assert response.status_code == 422
         error_detail = response.json()["detail"]
-        assert "duration_seconds must be between 30 and 1200" in error_detail
+        assert "duration_seconds must be between 10 and 1200" in error_detail
 
     def test_start_ramping_burst_test_defaults(self, client):
         """Test ramping burst test uses correct default values."""

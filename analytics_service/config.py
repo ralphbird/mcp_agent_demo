@@ -37,7 +37,7 @@ class LoadTesterSettings(BaseSettings):
 
     # Adaptive Worker Scaling Configuration
     adaptive_scaling_enabled: bool = True  # Enable adaptive scaling based on latency
-    max_adaptive_workers: int = 50
+    max_adaptive_workers: int = 150
     latency_threshold_ms: float = 500.0  # Scale up if avg latency exceeds this
     scaling_cooldown_seconds: float = 5.0  # Minimum time between scaling operations
 
@@ -51,6 +51,15 @@ class LoadTesterSettings(BaseSettings):
     ip_geographic_regions: str = "US,EU,APAC"  # Comma-separated regions
     include_datacenter_ips: bool = True  # Include cloud/datacenter IP ranges
     include_residential_ips: bool = True  # Include ISP residential IP ranges
+
+    # Traffic Variability Configuration
+    traffic_variability_enabled: bool = True  # Enable realistic traffic patterns
+    jitter_percentage: float = 0.15  # Random timing variation (±15% of interval)
+    burst_probability: float = 0.05  # Chance of micro-bursts per request cycle
+    burst_multiplier: float = 2.0  # RPS multiplier during micro-bursts
+    burst_duration_ms: float = 200.0  # Duration of micro-bursts in milliseconds
+    baseline_fluctuation_amplitude: float = 0.1  # Baseline RPS variation amplitude (±10%)
+    baseline_fluctuation_period_seconds: float = 30.0  # Period of baseline fluctuations
 
     @field_validator("api_port")
     @classmethod
@@ -176,6 +185,60 @@ class LoadTesterSettings(BaseSettings):
                 seen.add(region)
 
         return ",".join(unique_regions)  # Normalize to uppercase, deduplicated
+
+    @field_validator("jitter_percentage")
+    @classmethod
+    def validate_jitter_percentage(cls, v: float) -> float:
+        """Validate jitter percentage."""
+        if not 0.0 <= v <= 0.5:
+            msg = "Jitter percentage must be between 0.0 and 0.5 (0%-50%)"
+            raise ValueError(msg)
+        return v
+
+    @field_validator("burst_probability")
+    @classmethod
+    def validate_burst_probability(cls, v: float) -> float:
+        """Validate burst probability."""
+        if not 0.0 <= v <= 0.2:
+            msg = "Burst probability must be between 0.0 and 0.2 (0%-20%)"
+            raise ValueError(msg)
+        return v
+
+    @field_validator("burst_multiplier")
+    @classmethod
+    def validate_burst_multiplier(cls, v: float) -> float:
+        """Validate burst multiplier."""
+        if not 1.0 <= v <= 10.0:
+            msg = "Burst multiplier must be between 1.0 and 10.0"
+            raise ValueError(msg)
+        return v
+
+    @field_validator("burst_duration_ms")
+    @classmethod
+    def validate_burst_duration(cls, v: float) -> float:
+        """Validate burst duration."""
+        if not 50.0 <= v <= 2000.0:
+            msg = "Burst duration must be between 50.0 and 2000.0 milliseconds"
+            raise ValueError(msg)
+        return v
+
+    @field_validator("baseline_fluctuation_amplitude")
+    @classmethod
+    def validate_baseline_fluctuation_amplitude(cls, v: float) -> float:
+        """Validate baseline fluctuation amplitude."""
+        if not 0.0 <= v <= 0.3:
+            msg = "Baseline fluctuation amplitude must be between 0.0 and 0.3 (0%-30%)"
+            raise ValueError(msg)
+        return v
+
+    @field_validator("baseline_fluctuation_period_seconds")
+    @classmethod
+    def validate_baseline_fluctuation_period(cls, v: float) -> float:
+        """Validate baseline fluctuation period."""
+        if v <= 0:
+            msg = "Baseline fluctuation period must be positive"
+            raise ValueError(msg)
+        return v
 
     def get_ip_regions_list(self) -> list[str]:
         """Get IP geographic regions as a list.

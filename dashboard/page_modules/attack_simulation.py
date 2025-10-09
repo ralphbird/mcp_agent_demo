@@ -63,7 +63,7 @@ def show_attack_simulation_page():
         st.markdown("Simulate steady user traffic")
 
         baseline_rps = st.slider(
-            "Requests per Second", min_value=1, max_value=50, value=10, help="Steady request rate"
+            "Requests per Second", min_value=1, max_value=50, value=35, help="Steady request rate"
         )
 
         continuous_mode = st.checkbox(
@@ -95,7 +95,7 @@ def show_attack_simulation_page():
             "Peak RPS",
             min_value=10,
             max_value=2000,
-            value=100,
+            value=800,
             help="Peak request rate to reach by end of test. Starts at 10% and ramps up gradually.",
         )
 
@@ -103,7 +103,7 @@ def show_attack_simulation_page():
             "Burst Duration (seconds)",
             min_value=30,
             max_value=1200,
-            value=240,
+            value=1200,
             help="Total duration for ramping up to peak RPS (minimum 30s for effective ramping)",
         )
 

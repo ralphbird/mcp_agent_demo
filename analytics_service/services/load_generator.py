@@ -1,6 +1,7 @@
 """Async HTTP load generation engine for currency API testing."""
 
 import asyncio
+import math
 import random
 import time
 from collections import deque
@@ -81,6 +82,11 @@ class LoadGenerator:
         # Latency compensation tracking
         self._compensation_history: deque[float] = deque(maxlen=1000)  # Last 1000 compensations
 
+        # Traffic variability state
+        self._test_start_time = time.time()
+        self._burst_end_time = 0.0  # Track when current micro-burst ends
+        self._in_burst = False
+
         # IP spoofing generator (only initialize if enabled)
         self._ip_generator: IPGenerator | None = None
         if settings.ip_spoofing_enabled:
@@ -91,6 +97,64 @@ class LoadGenerator:
                 rotation_interval=settings.ip_rotation_interval,
                 burst_mode=config.burst_mode,
             )
+
+    def _get_variable_rps(self, base_rps: float) -> float:
+        """Calculate variable RPS based on baseline fluctuations and micro-bursts.
+
+        Args:
+            base_rps: Base requests per second from configuration
+
+        Returns:
+            Adjusted RPS with variability applied
+        """
+        if not settings.traffic_variability_enabled:
+            return base_rps
+
+        current_time = time.time()
+        elapsed_time = current_time - self._test_start_time
+
+        # Check for micro-burst
+        if self._in_burst and current_time < self._burst_end_time:
+            # Continue current micro-burst
+            return base_rps * settings.burst_multiplier
+        if self._in_burst and current_time >= self._burst_end_time:
+            # End current micro-burst
+            self._in_burst = False
+        elif not self._in_burst and random.random() < settings.burst_probability:
+            # Start new micro-burst
+            self._in_burst = True
+            self._burst_end_time = current_time + (settings.burst_duration_ms / 1000.0)
+            return base_rps * settings.burst_multiplier
+
+        # Apply baseline fluctuations (sine wave pattern)
+        fluctuation_phase = (
+            (elapsed_time / settings.baseline_fluctuation_period_seconds) * 2 * math.pi
+        )
+        fluctuation_factor = 1.0 + (
+            settings.baseline_fluctuation_amplitude * math.sin(fluctuation_phase)
+        )
+
+        return base_rps * fluctuation_factor
+
+    def _apply_jitter_to_interval(self, base_interval: float) -> float:
+        """Apply random jitter to request timing interval.
+
+        Args:
+            base_interval: Base interval between requests
+
+        Returns:
+            Jittered interval with random variation
+        """
+        if not settings.traffic_variability_enabled:
+            return base_interval
+
+        # Apply random jitter (±jitter_percentage of base interval)
+        jitter_range = base_interval * settings.jitter_percentage
+        jitter = random.uniform(-jitter_range, jitter_range)
+
+        # Ensure minimum positive interval
+        min_interval = settings.min_sleep_threshold_ms / 1000.0
+        return max(min_interval, base_interval + jitter)
 
     def _calculate_worker_config(self, rps: float) -> tuple[int, float]:
         """Calculate optimal number of workers and interval for given RPS.
@@ -105,7 +169,9 @@ class LoadGenerator:
             # For low RPS, use single worker with appropriate interval
             return 1, 1.0 / rps
         # For higher RPS, use multiple workers but limit to reasonable number
-        num_workers = min(int(rps / 2), 10)
+        # Scale workers more aggressively for burst testing
+        num_workers = min(int(rps / 2), 25) if rps <= 50 else min(int(rps / 4), 100)
+
         interval = num_workers / rps
         return num_workers, interval
 
@@ -116,9 +182,15 @@ class LoadGenerator:
             raise RuntimeError(msg)
 
         self.is_running = True
+
+        # Reset variability state for new test
+        self._test_start_time = time.time()
+        self._burst_end_time = 0.0
+        self._in_burst = False
+
         self._session = aiohttp.ClientSession(
             timeout=aiohttp.ClientTimeout(total=settings.request_timeout),
-            connector=aiohttp.TCPConnector(limit=100, limit_per_host=50),
+            connector=aiohttp.TCPConnector(limit=500, limit_per_host=250),
         )
 
         # Start load generation tasks
@@ -442,7 +514,7 @@ class LoadGenerator:
 
                 # Metrics recording removed for load_tester
 
-                # Calculate current interval distributed across worker tasks only (exclude monitor tasks)
+                # Calculate current interval with variability
                 num_workers = 0
                 for task in self._tasks:
                     coro = task.get_coro()
@@ -451,7 +523,11 @@ class LoadGenerator:
                         num_workers += 1
 
                 num_workers = max(num_workers, 1)  # Ensure at least 1
-                target_interval = num_workers / max(self.config.requests_per_second, 0.1)
+
+                # Apply traffic variability to RPS calculation
+                base_rps = max(self.config.requests_per_second, 0.1)
+                variable_rps = self._get_variable_rps(base_rps)
+                target_interval = num_workers / variable_rps
 
                 # Apply latency compensation if enabled
                 if settings.latency_compensation_enabled:
@@ -460,13 +536,17 @@ class LoadGenerator:
 
                     # Apply minimum sleep threshold to prevent CPU spinning
                     min_sleep_seconds = settings.min_sleep_threshold_ms / 1000.0
-                    final_interval = max(min_sleep_seconds, compensated_interval)
+                    compensated_interval = max(min_sleep_seconds, compensated_interval)
+
+                    # Apply jitter to the compensated interval
+                    final_interval = self._apply_jitter_to_interval(compensated_interval)
 
                     # Track compensation amount for metrics
                     compensation_ms = (target_interval - final_interval) * 1000.0
                     self._compensation_history.append(compensation_ms)
                 else:
-                    final_interval = target_interval
+                    # Apply jitter to the base interval
+                    final_interval = self._apply_jitter_to_interval(target_interval)
 
                 # Wait for next request interval
                 await asyncio.sleep(final_interval)
@@ -482,10 +562,13 @@ class LoadGenerator:
                 )
                 await self._update_stats(error_result)
 
-                # Use target interval for error sleep (no compensation for errors)
+                # Use variable interval for error sleep (no compensation for errors)
                 num_workers = len(self._tasks) if self._tasks else 1
-                target_interval = num_workers / max(self.config.requests_per_second, 0.1)
-                await asyncio.sleep(target_interval)
+                base_rps = max(self.config.requests_per_second, 0.1)
+                variable_rps = self._get_variable_rps(base_rps)
+                target_interval = num_workers / variable_rps
+                final_interval = self._apply_jitter_to_interval(target_interval)
+                await asyncio.sleep(final_interval)
 
     async def _execute_single_request(self) -> tuple[LoadGenerationResult, dict[str, str | float]]:
         """Execute a single currency conversion request.

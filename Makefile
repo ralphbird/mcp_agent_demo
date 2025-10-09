@@ -1,4 +1,4 @@
-.PHONY: help install setup dev run build up down logs rebuild test quality clean docker-clean
+.PHONY: help install setup dev run build up down kill logs rebuild test quality clean docker-clean
 
 # Default target - shows available commands
 help:
@@ -11,6 +11,7 @@ help:
 	@echo "  make run      - Start analytics service API locally"
 	@echo "  make up       - Start all services with Docker"
 	@echo "  make down     - Stop all Docker services"
+	@echo "  make kill     - Kill local development servers"
 	@echo "  make logs     - View Docker service logs"
 	@echo "  make rebuild  - Rebuild and restart all Docker services"
 	@echo "  make build    - Build Docker containers only"
@@ -89,6 +90,13 @@ down:
 	@echo "🐳 Stopping all services..."
 	docker-compose down
 	@echo "✅ All services stopped!"
+
+# Kill local development servers
+kill:
+	@echo "🔪 Killing local development servers..."
+	@pkill -f streamlit 2>/dev/null || echo "No streamlit process found"
+	@pkill -f "analytics_service.main" 2>/dev/null || echo "No analytics service process found"
+	@echo "✅ Local servers killed!"
 
 # View Docker service logs
 logs:

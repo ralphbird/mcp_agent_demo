@@ -64,7 +64,7 @@ class TestLoadGenerator:
 
             # Ramp to higher RPS that requires more workers
             new_config = LoadTestConfig(
-                requests_per_second=30.0,  # Will use min(30/2, 10) = 10 workers
+                requests_per_second=30.0,  # Will use min(30/2, 25) = 15 workers
                 currency_pairs=["USD_EUR", "USD_GBP"],
                 amounts=[100.0, 200.0],
             )
@@ -73,9 +73,9 @@ class TestLoadGenerator:
 
             # Should have more tasks now
             assert len(generator._tasks) > initial_task_count
-            expected_final_tasks = 10 + (
+            expected_final_tasks = 15 + (
                 1 if settings.adaptive_scaling_enabled else 0
-            )  # 10 workers + scaling monitor
+            )  # 15 workers + scaling monitor
             assert len(generator._tasks) == expected_final_tasks
             assert generator.config.requests_per_second == 30.0
             assert generator.config.currency_pairs == ["USD_EUR", "USD_GBP"]
@@ -87,7 +87,7 @@ class TestLoadGenerator:
     async def test_ramp_to_lower_rps(self):
         """Test ramping to lower RPS reduces worker tasks."""
         config = LoadTestConfig(
-            requests_per_second=40.0,  # Will use min(40/2, 10) = 10 workers
+            requests_per_second=40.0,  # Will use min(40/2, 25) = 20 workers
             currency_pairs=["USD_EUR", "USD_GBP", "USD_JPY"],
             amounts=[100.0, 200.0, 300.0],
         )
@@ -100,9 +100,9 @@ class TestLoadGenerator:
             # Account for adaptive scaling monitor task (if enabled)
             from analytics_service.config import settings
 
-            expected_initial_tasks = 10 + (
+            expected_initial_tasks = 20 + (
                 1 if settings.adaptive_scaling_enabled else 0
-            )  # 10 workers + scaling monitor
+            )  # 20 workers + scaling monitor
             assert initial_task_count == expected_initial_tasks
 
             # Ramp to lower RPS that uses fewer workers

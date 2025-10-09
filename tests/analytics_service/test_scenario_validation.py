@@ -40,7 +40,7 @@ class TestScenarioValidation:
     def test_scenario_durations_are_reasonable(self):
         """Test that scenario durations are within reasonable bounds."""
         for _scenario, config in LOAD_TEST_SCENARIOS.items():
-            # All durations should be at least 30 seconds
-            assert config.duration_seconds >= 30
+            # All durations should be at least 10 seconds
+            assert config.duration_seconds >= 10
             # And no more than 2 hours (for practical testing)
             assert config.duration_seconds <= 7200

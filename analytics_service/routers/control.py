@@ -313,7 +313,7 @@ async def start_ramping_burst_test(
 
     Args:
         target_rps: Peak requests per second to reach (1.0 to 2000.0)
-        duration_seconds: Total duration of the ramping burst test (30 to 1200 seconds)
+        duration_seconds: Total duration of the ramping burst test (10 to 1200 seconds)
         error_injection_enabled: Enable error injection for realistic testing
         error_injection_rate: Percentage of requests that should fail (0.0-0.5)
 
@@ -329,8 +329,8 @@ async def start_ramping_burst_test(
     if not (1.0 <= target_rps <= 2000.0):
         raise HTTPException(status_code=422, detail="target_rps must be between 1.0 and 2000.0")
 
-    if not (30 <= duration_seconds <= 1200):
-        raise HTTPException(status_code=422, detail="duration_seconds must be between 30 and 1200")
+    if not (10 <= duration_seconds <= 1200):
+        raise HTTPException(status_code=422, detail="duration_seconds must be between 10 and 1200")
 
     if error_injection_enabled and not (0.0 <= error_injection_rate <= 0.5):
         raise HTTPException(
